@@ -1,0 +1,6 @@
+{
+  "name": "Glider Gun",
+  "tagline": "Templated deployments using Docker, Terraform, and Ansible",
+  "body": "### Introduction\r\nGlider Gun uses Docker, Terraform, and Ansible to perform templated deployments that can target multiple cloud providers.",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
