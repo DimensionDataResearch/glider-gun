@@ -1,0 +1,37 @@
+# Install our dummy web app install.
+
+- hosts: all
+  tasks:
+    - name: AWS host name resolution override
+      shell: "echo \"127.0.0.1 $(hostname)\" >> /etc/hosts"
+      when: provider == "aws"
+      sudo: yes
+
+    - name: AWS host override  - archive.ubuntu.com
+      lineinfile:
+        dest: "/etc/hosts"
+        line: "91.189.88.152 archive.ubuntu.com"
+      when: provider == "aws"
+      sudo: yes
+
+    - name: AWS host override  - security.ubuntu.com
+      lineinfile:
+        dest: "/etc/hosts"
+        line: "91.189.91.26 security.ubuntu.com"
+      when: provider == "aws"
+      sudo: yes
+
+    - name: Install Apache httpd
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+      sudo: yes
+
+    - name: Publish web app
+      template:
+        src:  "{{ item }}.j2"
+        dest: "/var/www/html/{{ item }}"
+      with_items:
+        - index.html
+      sudo: yes
