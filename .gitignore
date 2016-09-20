@@ -253,3 +253,6 @@ paket-files/
 
 # Mac
 .DS_Store
+
+# Jekyl docs
+_site/
