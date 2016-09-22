@@ -2,6 +2,8 @@
 
 FROM ddresearch/terraform-provider-ddcloud:v1.0
 
+MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
+
 RUN apk add --update bash python py-pip
 RUN pip install --upgrade pip
 

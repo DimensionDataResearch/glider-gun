@@ -2,6 +2,8 @@
 
 FROM ddresearch/terraform-ansible-deploy:stable
 
+MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
+
 COPY root /root
 
 # Ensure permissions are right for ssh key auth.

@@ -120,7 +120,7 @@ namespace DD.Research.GliderGun.Api
             return new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
-                .AddEnvironmentVariables("DOOZER_")
+                .AddEnvironmentVariables("GG_")
                 .Build();
         }
     }
