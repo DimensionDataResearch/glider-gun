@@ -256,3 +256,6 @@ paket-files/
 
 # Jekyl docs
 _site/
+
+# State directory
+src/GliderGun.Api/state/

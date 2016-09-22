@@ -1,4 +1,4 @@
-# Base image for deployments using Terraform + Ansible.
+# Base image for Glider Gun templates using Terraform + Ansible.
 
 FROM ddresearch/terraform-provider-ddcloud:v1.0
 

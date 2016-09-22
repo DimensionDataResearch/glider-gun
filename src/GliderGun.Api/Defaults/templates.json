@@ -3,7 +3,7 @@
         "id": 1,
         "name": "Web application (multi-cloud)",
         "description": "Deploys the same web 'application' onto multiple clouds.",
-        "imageName": "ddresearch/tfa-multicloud-template:stable",
+        "imageName": "ddresearch/glider-gun-template-multi-cloud:stable",
         "parameters": [
             {
                 "name": "app_name",
