@@ -10,8 +10,8 @@ FROM microsoft/dotnet:1.0.0-preview2-sdk
 
 MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
 
-RUN mkdir -p /var/lib/tfa/state
-VOLUME /var/lib/tfa/state
+RUN mkdir -p /var/lib/glider-gun/state
+VOLUME /var/lib/glider-gun/state
 
 EXPOSE 5050
 
@@ -28,6 +28,6 @@ RUN ["dotnet", "build"]
 # If running output of "dotnet publish"
 # COPY src/GliderGun.Api/bin/Release/netcoreapp1.0/publish
 
-ENV GG_LocalStateDirectory=/var/lib/tfa/state
+ENV GG_LocalStateDirectory=/var/lib/glider-gun/state
 
 ENTRYPOINT ["dotnet", "run"]
