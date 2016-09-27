@@ -7,8 +7,8 @@ categories: main
 
 ### Introduction
 
-Glider Gun uses Docker, Terraform, and Ansible to perform templated deployments that can target multiple cloud providers.
+Glider Gun is a system for performing idempotent templated deployments.
+
+By default it uses Terraform (enabling it to target multiple cloud providers) and Ansible but, due to its modular nature, its behaviour is highly customisable.
 
 * [High-level design](design/)
-
-_This site is a work-in-progress (we're cleaning up the original prototype code and documentation and will post it here as it becomes ready)._

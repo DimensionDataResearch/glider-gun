@@ -18,3 +18,7 @@ Glider Gun uses Docker to encapsulate the process for each deployment, providing
 ## Deploying a template
 
 ![deploying a template](../images/deploying-a-template.jpg)
+
+## Template structure
+
+![deploying a template](../images/template-structure.jpg)
