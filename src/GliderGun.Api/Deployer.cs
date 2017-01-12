@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 namespace DD.Research.GliderGun.Api
 {
     using Models;
+    using Utils;
 
     using FiltersDictionary = Dictionary<string, IDictionary<string, bool>>;
     using FilterDictionary = Dictionary<string, bool>;
@@ -49,15 +50,15 @@ namespace DD.Research.GliderGun.Api
             DeployerOptions options = deployerOptions.Value;
             Log = logger;
 
-            LocalStateDirectory = new DirectoryInfo(Path.GetFullPath(
+            LocalStateDirectory = new DirectoryInfo(
                 Path.Combine(Directory.GetCurrentDirectory(), options.LocalStateDirectory)
-            ));
+            );
             logger.LogInformation("Final value for LocalStateDirectory is '{LocalStateDirectory}'.",
                 LocalStateDirectory.FullName
             );
-            HostStateDirectory = new DirectoryInfo(Path.GetFullPath(
+            HostStateDirectory = new DirectoryInfo(
                 Path.Combine(Directory.GetCurrentDirectory(), options.HostStateDirectory)
-            ));
+            );
             logger.LogInformation("Final value for HostStateDirectory is '{HostStateDirectory}'.",
                 HostStateDirectory.FullName
             );
@@ -371,9 +372,7 @@ namespace DD.Research.GliderGun.Api
         /// </returns>
         DirectoryInfo GetLocalStateDirectory(string deploymentId)
         {
-            DirectoryInfo stateDirectory = new DirectoryInfo(
-                Path.Combine(LocalStateDirectory.FullName, deploymentId)
-            );
+            DirectoryInfo stateDirectory = LocalStateDirectory.Subdirectory(deploymentId);
             if (!stateDirectory.Exists)
                 stateDirectory.Create();
 
@@ -391,9 +390,7 @@ namespace DD.Research.GliderGun.Api
         /// </returns>
         DirectoryInfo GetHostStateDirectory(string deploymentId)
         {
-            DirectoryInfo stateDirectory = new DirectoryInfo(
-                Path.Combine(HostStateDirectory.FullName, deploymentId)
-            );
+            DirectoryInfo stateDirectory = HostStateDirectory.Subdirectory(deploymentId);
             if (!stateDirectory.Exists)
                 stateDirectory.Create();
 
@@ -500,9 +497,7 @@ namespace DD.Research.GliderGun.Api
             if (stateDirectory == null)
                 throw new ArgumentNullException(nameof(stateDirectory));
 
-            return new FileInfo(
-                Path.Combine(stateDirectory.FullName, "tfvars.json")
-            );
+            return stateDirectory.File("tfvars.json");
         }
 
         /// <summary>
@@ -519,9 +514,7 @@ namespace DD.Research.GliderGun.Api
             if (stateDirectory == null)
                 throw new ArgumentNullException(nameof(stateDirectory));
 
-            return new FileInfo(
-                Path.Combine(stateDirectory.FullName, "terraform.output.json")
-            );
+            return stateDirectory.File("terraform.output.json");
         }
 
         /// <summary>
@@ -538,9 +531,7 @@ namespace DD.Research.GliderGun.Api
             if (stateDirectory == null)
                 throw new ArgumentNullException(nameof(stateDirectory));
 
-            DirectoryInfo logsDirectory = new DirectoryInfo(
-                Path.Combine(stateDirectory.FullName, "logs")
-            );
+            DirectoryInfo logsDirectory = stateDirectory.Subdirectory("logs");
             if (!logsDirectory.Exists)
                 yield break;
 
