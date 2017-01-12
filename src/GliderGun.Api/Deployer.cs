@@ -371,10 +371,9 @@ namespace DD.Research.GliderGun.Api
         /// </returns>
         DirectoryInfo GetLocalStateDirectory(string deploymentId)
         {
-            DirectoryInfo stateDirectory = new DirectoryInfo(Path.Combine(
-                LocalStateDirectory.FullName,
-                deploymentId
-            ));
+            DirectoryInfo stateDirectory = new DirectoryInfo(
+                Path.Combine(LocalStateDirectory.FullName, deploymentId)
+            );
             if (!stateDirectory.Exists)
                 stateDirectory.Create();
 
@@ -392,10 +391,9 @@ namespace DD.Research.GliderGun.Api
         /// </returns>
         DirectoryInfo GetHostStateDirectory(string deploymentId)
         {
-            DirectoryInfo stateDirectory = new DirectoryInfo(Path.Combine(
-                HostStateDirectory.FullName,
-                deploymentId
-            ));
+            DirectoryInfo stateDirectory = new DirectoryInfo(
+                Path.Combine(HostStateDirectory.FullName, deploymentId)
+            );
             if (!stateDirectory.Exists)
                 stateDirectory.Create();
 
