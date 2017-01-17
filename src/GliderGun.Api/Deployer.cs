@@ -231,10 +231,6 @@ namespace DD.Research.GliderGun.Api
                             Config = new Dictionary<string, string>()
                         }
                     },
-                    Env = new List<string>
-                    {
-                        "ANSIBLE_NOCOLOR=1" // Disable coloured output because escape sequences look weird in the log.
-                    },
                     Labels = new Dictionary<string, string>
                     {
                         ["task.type"] = "deployment",
