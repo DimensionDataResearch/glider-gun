@@ -3,10 +3,10 @@
 # Build this with the context of the repository root folder (../.. relative to this file)
 
 # If building from source
-FROM microsoft/dotnet:1.0.0-preview2-sdk
+FROM microsoft/dotnet:1.1.1-sdk
 
 # If running output of "dotnet publish"
-# FROM microsoft/dotnet:1.0.0-core
+# FROM microsoft/dotnet:1.1.1-runtime
 
 MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
 
@@ -28,6 +28,10 @@ RUN ["dotnet", "build"]
 # If running output of "dotnet publish"
 # COPY src/GliderGun.Api/bin/Release/netcoreapp1.0/publish
 
-ENV GG_LocalStateDirectory=/var/lib/glider-gun/state
+ENV GG_LocalStateDirectory=/var/lib/glider-gun/state /dotnetapp
 
+# If building from source
 ENTRYPOINT ["dotnet", "run"]
+
+# If running output of "dotnet publish"
+# ENTRYPOINT ["dotnet", "run", "GliderGun.Api.dll"]
