@@ -1,24 +1,24 @@
-image : microsoft/dotnet:1.1.2-sdk
+image : microsoft/docker:latest
 
 services:
   - docker:dind
+
+before_script:
+  - sudo sh -c 'echo "deb [arch=amd64] https://apt-mo.trafficmanager.net/repos/dotnet-release/ xenial main" > /etc/apt/sources.list.d/dotnetdev.list'
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 417A0893
+  - sudo apt-get update
+  - sudo apt-get install dotnet-dev-1.0.4
 
 stages:
   - build
   - package
 
-job1:
+build:
  stage: build
  script:
   - 'dotnet restore'
   - 'dotnet build -c Release'
   - 'dotnet publish -c Release'
- only:
-   - master
-
-job2:
- stage: package
- script:
   - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f .\docker-images\glider-gun-api\Dockerfile .'
  only:
    - master
