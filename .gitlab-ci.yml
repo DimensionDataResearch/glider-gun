@@ -27,6 +27,6 @@ package:
   stage: package
   script:
    - ls
-   - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f .\docker-images\glider-gun-api\Dockerfile .'
+   - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f docker-images\glider-gun-api\Dockerfile .'
   only:
     - master
