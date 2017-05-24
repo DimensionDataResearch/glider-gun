@@ -12,11 +12,13 @@ build:
   - 'dotnet restore'
   - 'dotnet build -c Release'
   - 'dotnet publish -c Release'
+  - mkdir dotnetapp
+  - cp -rf src/GliderGun.Api/bin/Release/netcoreapp1.1/publish/ dotnetapp/
  only:
    - master
  artifacts:
   paths:
-    - src/GliderGun.Api/bin/Release/netcoreapp1.1/publish/
+    - dotnetapp/
 
 package:
   image : docker:latest
@@ -24,6 +26,7 @@ package:
    - build
   stage: package
   script:
+   - ls
    - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f .\docker-images\glider-gun-api\Dockerfile .'
   only:
     - master
