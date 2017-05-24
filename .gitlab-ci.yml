@@ -1,11 +1,24 @@
-image : microsoft/dotnet:1.1.1-sdk
+image : microsoft/dotnet:1.1.2-sdk
+
+services:
+  - docker:dind
+
 stages:
   - build
-before_script:
-  - 'dotnet restore'
-build:
+  - package
+
+job1:
  stage: build
  script:
-  - 'dotnet build'
+  - 'dotnet restore'
+  - 'dotnet build Release'
+ only:
+   - master
+
+job2:
+ stage: package
+ script: 
+  - 'dotnet package Release'
+  - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f .\docker-images\glider-gun-api\Dockerfile .'
  only:
    - master
