@@ -1,0 +1,11 @@
+image : microsoft/dotnet:1.1.2-sdk
+stages:
+  - build
+before_script:
+  - 'dotnet restore'
+build:
+ stage: build
+ script:
+  - 'dotnet build'
+ only:
+   - master
