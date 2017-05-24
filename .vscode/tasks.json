@@ -7,7 +7,7 @@
         {
             "taskName": "build",
             "args": [
-                "${workspaceRoot}/src/GliderGun.Api/project.json"
+                "${workspaceRoot}/GliderGun.sln"
             ],
             "isBuildCommand": true,
             "problemMatcher": "$msCompile"

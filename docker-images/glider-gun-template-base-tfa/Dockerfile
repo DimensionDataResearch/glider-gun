@@ -1,6 +1,6 @@
 # Base image for Glider Gun templates using Terraform + Ansible.
 
-FROM ddresearch/terraform-provider-ddcloud:v1.0
+FROM ddresearch/terraform-provider-ddcloud:v1.1.10
 
 MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
 
