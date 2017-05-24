@@ -246,7 +246,7 @@ namespace DD.Research.GliderGun.Api
                 string containerId = newContainer.ID;
                 Log.LogInformation("Created container '{ContainerId}'.", containerId);
 
-                await Client.Containers.StartContainerAsync(containerId, new HostConfig());
+                await Client.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
                 return true;
@@ -344,7 +344,7 @@ namespace DD.Research.GliderGun.Api
                 string containerId = newContainer.ID;
                 Log.LogInformation("Created container '{ContainerId}'.", containerId);
 
-                await Client.Containers.StartContainerAsync(containerId, new HostConfig());
+                await Client.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
                 return true;
