@@ -11,14 +11,14 @@ job1:
  stage: build
  script:
   - 'dotnet restore'
-  - 'dotnet build Release'
+  - 'dotnet build -c Release'
  only:
    - master
 
 job2:
  stage: package
  script: 
-  - 'dotnet package Release'
+  - 'dotnet package -c Release'
   - 'docker build -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f .\docker-images\glider-gun-api\Dockerfile .'
  only:
    - master
