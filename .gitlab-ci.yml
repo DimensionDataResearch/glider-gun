@@ -12,7 +12,7 @@ build:
   - 'dotnet restore'
   - 'dotnet build -c Release'
   - 'dotnet publish -c Release'
-  - copy src/GliderGun.Api/bin/Release/netcoreapp1.1/publish /dotnetapp
+  - cp -rf /src/GliderGun.Api/bin/Release/netcoreapp1.1/publish /dotnetapp
  only:
    - master
  artifacts:
