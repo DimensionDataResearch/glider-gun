@@ -15,8 +15,8 @@ VOLUME /var/lib/glider-gun/state
 
 EXPOSE 5050
 
-#RUN mkdir -p /dotnetapp
-WORKDIR /dotnetapp
+RUN mkdir -p /glidergun
+WORKDIR /glidergun
 
 #COPY NuGet.config /dotnetapp
     
@@ -27,6 +27,7 @@ WORKDIR /dotnetapp
 
 # If running output of "dotnet publish"
 #COPY src/GliderGun.Api/bin/Release/netcoreapp1.1/publish  /dotnetapp
+COPY dotnetapp /glidergun
 
 ENV GG_LocalStateDirectory=/var/lib/glider-gun/state
 # If building from source
