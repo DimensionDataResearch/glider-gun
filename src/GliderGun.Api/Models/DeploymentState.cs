@@ -14,18 +14,28 @@ namespace DD.Research.GliderGun.Api.Models
         Unknown     = 0,
 
         /// <summary>
+        ///     The deployment is requested.
+        /// </summary>
+        Initiated = 1,
+
+        /// <summary>
         ///     The deployment is running.
         /// </summary>
-        Running     = 1,
+        Running     = 2,
 
         /// <summary>
         ///     The deployment completed successfully.
         /// </summary>
-        Successful  = 2,
+        Successful  = 3,
 
         /// <summary>
         ///     The deployment failed.
         /// </summary>
-        Failed      = 3
+        Failed      = 4,
+
+        /// <summary>
+        ///     The deployment is requested.
+        /// </summary>
+        Deleted = 5,
     }
 }

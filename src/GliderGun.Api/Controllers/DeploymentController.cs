@@ -41,6 +41,7 @@ namespace DD.Research.GliderGun.Api.Controllers
         ///     A list of deployments.
         /// </returns>
         [HttpGet("")]
+        [ProducesResponseType(typeof(Deployment[]), 200)]
         public async Task<IActionResult> ListDeployments()
         {
             Deployment[] deployments = await _deployer.GetDeploymentsAsync();
@@ -58,14 +59,16 @@ namespace DD.Research.GliderGun.Api.Controllers
         ///     The deployment.
         /// </returns>
         [HttpGet("{deploymentId}")]
-        public async Task<IActionResult> GetDeployment(string deploymentId)
+        [ProducesResponseType(typeof(Deployment), 200)]        
+        [ProducesResponseType(typeof(ErrorResponse), 404)]
+        public async Task<IActionResult> GetDeployment([FromQuery] string deploymentId)
         {
             Deployment deployment = await _deployer.GetDeploymentAsync(deploymentId);
             if (deployment == null)
             {
                 Response.Headers.Add("ErrorCode", "DeploymentNotFound");
 
-                return NotFound(new
+                return NotFound(new ErrorResponse
                 {
                     ErrorCode = "DeploymentNotFound",
                     Message = $"No deployment was found with Id '{deploymentId}'."
@@ -82,6 +85,7 @@ namespace DD.Research.GliderGun.Api.Controllers
         ///     The deployment result.
         /// </returns>
         [HttpPost("")]
+        [ProducesResponseType(typeof(Deployment), 200)]     
         public async Task<IActionResult> DeployTemplate([FromBody] DeploymentConfiguration model)
         {
             if (!ModelState.IsValid)
@@ -90,11 +94,11 @@ namespace DD.Research.GliderGun.Api.Controllers
             string deploymentId = HttpContext.TraceIdentifier;
             bool started = await _deployer.DeployAsync(deploymentId, model.ImageName, model.Parameters);
 
-            return Ok(new
+            return Ok(new Deployment
             {
-                Action = "Deploy",
-                Started = started,
-                DeploymentId = deploymentId
+                Action = "Deployment Requested",
+                State = DeploymentState.Initiated,
+                Id = deploymentId
             });
         }
 
@@ -109,11 +113,11 @@ namespace DD.Research.GliderGun.Api.Controllers
         {
             bool started = await _deployer.DestroyAsync(deploymentId);
 
-            return Ok(new
+            return Ok(new Deployment
             {
-                Action = "Destroy",
-                Started = started,
-                DeploymentId = deploymentId
+                Action = "Deployment Deletion Requested",
+                State = DeploymentState.Deleted,
+                Id = deploymentId
             });
         }
     }

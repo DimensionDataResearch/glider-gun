@@ -41,6 +41,7 @@ namespace DD.Research.GliderGun.Api.Controllers
         ///     A list of deployments.
         /// </returns>
         [HttpGet("")]
+        [ProducesResponseType(typeof(Image[]), 200)]
         public async Task<IActionResult> ListImages()
         {
             Image[] deployments = await _deployer.GetImagesAsync();

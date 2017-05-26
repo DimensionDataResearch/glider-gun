@@ -8,6 +8,7 @@ using Newtonsoft.Json.Serialization;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace DD.Research.GliderGun.Api
 {
@@ -16,12 +17,23 @@ namespace DD.Research.GliderGun.Api
     /// </summary>
     public class Startup
     {
+
+        public Startup(IHostingEnvironment env)
+        {           
+            // Configuration = new ConfigurationBuilder()
+            //     .SetBasePath(Directory.GetCurrentDirectory())
+            //     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+            //     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
+            //     .AddEnvironmentVariables("GG_")
+            //     .Build();
+        }
+
         /// <summary>
         ///     The application configuration.
         /// </summary>
-        static IConfiguration Configuration { get; } = LoadConfiguration();
+        static IConfiguration Configuration { get; set; }
 
-        /// <summary>
+       /// <summary>
         ///     Configure application services.
         /// </summary>
         /// <param name="services">
@@ -42,6 +54,10 @@ namespace DD.Research.GliderGun.Api
 						new StringEnumConverter()
 					);
 				});
+           services.AddSwaggerGen(c =>
+                {
+                    c.SwaggerDoc("v1", new Info { Title = "Glider Gun API", Version = "v1" });
+                });
 
             services.AddTransient<Deployer>();
         }
@@ -55,7 +71,7 @@ namespace DD.Research.GliderGun.Api
         /// <param name="loggerFactory">
         ///     The logger factory.
         /// </param>
-        public void Configure(IApplicationBuilder app, ILoggerFactory loggerFactory)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, ILoggerFactory loggerFactory)
         {
             loggerFactory.AddConsole(LogLevel.Trace, includeScopes: true);
 
@@ -82,6 +98,14 @@ namespace DD.Research.GliderGun.Api
                 await next(context);
             });
             app.UseMvc();
+              // Enable middleware to serve generated Swagger as a JSON endpoint.
+            app.UseSwagger();
+
+            // Enable middleware to serve swagger-ui (HTML, JS, CSS etc.), specifying the Swagger JSON endpoint.
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Glider Gun Api");
+            });
         }
 
         /// <summary>
@@ -95,7 +119,8 @@ namespace DD.Research.GliderGun.Api
             SynchronizationContext.SetSynchronizationContext(
                 new SynchronizationContext()
             );
-
+            Configuration = LoadConfiguration(commandLineArguments);
+            
             IWebHost host = new WebHostBuilder()
                 .UseConfiguration(Configuration)
                 .UseStartup<Startup>()
@@ -115,11 +140,12 @@ namespace DD.Research.GliderGun.Api
         /// <returns>
         ///     The configuration.
         /// </returns>
-        static IConfiguration LoadConfiguration()
+        static IConfiguration LoadConfiguration(string[] commandLineArguments)
         {
-            return new ConfigurationBuilder()
+            return new ConfigurationBuilder()              
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json")
+                .AddCommandLine(commandLineArguments)
                 .AddEnvironmentVariables("GG_")
                 .Build();
         }
