@@ -123,6 +123,34 @@ namespace DD.Research.GliderGun.Api
             return deployments.ToArray();
         }
 
+                /// <summary>
+        ///     Get all deployments.
+        /// </summary>
+        /// <returns>
+        ///     A list of deployments.
+        /// </returns>
+        public async Task<Image[]> GetImagesAsync()
+        {
+            List<Image> images = new List<Image>();
+
+            Log.LogInformation("Retrieving all deployments...");
+
+            // Find all containers that have a "deployment.id" label.
+            ImagesListParameters listParameters = new ImagesListParameters
+            {
+                All = true
+            };
+            IList<ImagesListResponse> imageListings = await Client.Images.ListImagesAsync(listParameters);
+
+            images.AddRange(imageListings.Select(
+                containerListing => ToImageModel(containerListing)
+            ));
+            
+            Log.LogInformation("Retrieved {DeploymentCount} deployments.", images.Count);
+
+            return images.ToArray();
+        }
+
         /// <summary>
         ///     Get a specific deployment by Id.
         /// </summary>
@@ -609,6 +637,23 @@ namespace DD.Research.GliderGun.Api
             }
 
             return deployment;
+        }
+
+        Image ToImageModel(ImagesListResponse imageListing)
+        {
+            if (imageListing == null)
+                throw new ArgumentNullException(nameof(imageListing));
+
+            Image image = new Image
+            {
+                Id = imageListing.ID,
+                Created = imageListing.Created          
+            };        
+            
+            if(imageListing.RepoTags != null)
+                image.Tags.AddRange(imageListing.RepoTags);
+
+            return image;
         }
 
         /// <summary>

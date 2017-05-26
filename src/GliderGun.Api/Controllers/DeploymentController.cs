@@ -33,14 +33,7 @@ namespace DD.Research.GliderGun.Api.Controllers
 
             _deployer = deployer;
         }
-
-        /// <summary>
-        ///     The template manifest file.
-        /// </summary>
-        FileInfo TemplateManifestFile => new FileInfo(Path.Combine(
-            _deployer.LocalStateDirectory.FullName, Templates.TemplateManifestFileName
-        ));
-
+ 
         /// <summary>
         ///     List all deployments.
         /// </summary>
@@ -92,22 +85,10 @@ namespace DD.Research.GliderGun.Api.Controllers
         public async Task<IActionResult> DeployTemplate([FromBody] DeploymentConfiguration model)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            Template template = Templates.Load(TemplateManifestFile).FirstOrDefault(
-                deploymentTemplate => deploymentTemplate.Id == model.TemplateId
-            );
-            if (template == null)
-            {
-                return NotFound(new
-                {
-                    ErrorCode = "TemplateNotFound",
-                    Message = $"Template {model.TemplateId} not found."
-                });
-            }
+                return BadRequest(ModelState);            
 
             string deploymentId = HttpContext.TraceIdentifier;
-            bool started = await _deployer.DeployAsync(deploymentId, template.ImageName, model.Parameters);
+            bool started = await _deployer.DeployAsync(deploymentId, model.ImageName, model.Parameters);
 
             return Ok(new
             {

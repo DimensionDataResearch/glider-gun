@@ -6,9 +6,9 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceRoot}/src/GliderGun.Api/bin/Debug/netcoreapp1.0/GliderGun.Api.dll",
+            "program": "${workspaceRoot}/src/GliderGun.Api/bin/Debug/netcoreapp1.1/GliderGun.Api.dll",
             "args": [],
-            "cwd": "${workspaceRoot}",
+            "cwd": "${workspaceRoot}/src/GliderGun.Api",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart",
             "launchBrowser": {

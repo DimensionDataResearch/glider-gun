@@ -9,9 +9,9 @@ namespace DD.Research.GliderGun.Api.Models
     public class DeploymentConfiguration
     {
         /// <summary>
-        ///     The Id of the template to deploy.
+        ///     The Id of the docker image to run
         /// </summary>
-        public int TemplateId { get; set; }
+        public string ImageName { get; set; }
 
         /// <summary>
         ///     Values for the template's parameters (if any).
