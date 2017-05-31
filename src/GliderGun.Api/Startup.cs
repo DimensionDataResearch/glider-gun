@@ -98,7 +98,8 @@ namespace DD.Research.GliderGun.Api
                 await next(context);
             });
             app.UseMvc();
-              // Enable middleware to serve generated Swagger as a JSON endpoint.
+
+            // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
 
             // Enable middleware to serve swagger-ui (HTML, JS, CSS etc.), specifying the Swagger JSON endpoint.
@@ -122,9 +123,9 @@ namespace DD.Research.GliderGun.Api
             Configuration = LoadConfiguration(commandLineArguments);
             
             IWebHost host = new WebHostBuilder()
-                .UseConfiguration(Configuration)
-                .UseStartup<Startup>()
                 .UseUrls("http://*:5050/")
+                .UseConfiguration(Configuration)
+                .UseStartup<Startup>()            
                 .UseKestrel()
                 .Build();
 

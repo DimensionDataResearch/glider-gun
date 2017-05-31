@@ -5,6 +5,8 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Text;
+using System.Threading;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -193,6 +195,26 @@ namespace DD.Research.GliderGun.Api
             }
             
             Deployment deployment = ToDeploymentModel(newestMatchingContainer);
+
+            var stream = await Client.Containers.GetContainerLogsAsync(newestMatchingContainer.ID, 
+            new ContainerLogsParameters()
+                {
+                    ShowStderr = true,
+                    ShowStdout = true,
+                }, 
+                CancellationToken.None);
+
+          
+            StringBuilder builder = new StringBuilder();
+            using (StreamReader sr = new StreamReader(stream))
+            {                                               
+                if (!sr.EndOfStream)
+                {
+                    string log = await sr.ReadToEndAsync();  
+                    deployment.Logs.Add(new DeploymentLog(){LogFile = "Console", LogContent = log });                   
+                }                    
+            }
+            
 
             Log.LogInformation("Retrieved deployment '{DeploymentId}'.", deploymentId);
 

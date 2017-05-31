@@ -61,7 +61,7 @@ namespace DD.Research.GliderGun.Api.Controllers
         [HttpGet("{deploymentId}")]
         [ProducesResponseType(typeof(Deployment), 200)]        
         [ProducesResponseType(typeof(ErrorResponse), 404)]
-        public async Task<IActionResult> GetDeployment([FromQuery] string deploymentId)
+        public async Task<IActionResult> GetDeployment(string deploymentId)
         {
             Deployment deployment = await _deployer.GetDeploymentAsync(deploymentId);
             if (deployment == null)
