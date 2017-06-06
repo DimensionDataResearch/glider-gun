@@ -29,7 +29,7 @@ package:
    - ls
    - export IMAGE_TAG=$(echo -en $CI_COMMIT_REF_NAME | tr -c '[:alnum:]_.-' '-')
    - docker login -u "$ART_DOCKER_USER"  -p "$ART_DOCKER_TOKEN" $ART_DOCKER
-   - docker build --pull --label "dimensiondata:true" -t "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"  -f docker-images/glider-gun-api/Dockerfile .
+   - docker build --pull --label dimensiondata=true -t "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"  -f docker-images/glider-gun-api/Dockerfile .
    - docker push "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"
 
   only:
