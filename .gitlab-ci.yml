@@ -28,9 +28,9 @@ package:
   script:
    - ls
    - export IMAGE_TAG=$(echo -en $CI_COMMIT_REF_NAME | tr -c '[:alnum:]_.-' '-')
-   - docker login -u "gitlab-ci-token" -p "$CI_JOB_TOKEN" $CI_REGISTRY
-   - docker build --pull --label "dimensiondata:true" -t "$CI_REGISTRY_IMAGE:$IMAGE_TAG" -t dd/managecompute/glider-gun-api -t dd/managecompute/glider-gun-api:stable -f docker-images/glider-gun-api/Dockerfile .
-   - docker push "$CI_REGISTRY_IMAGE:$IMAGE_TAG"
+   - docker login -u "$ART_DOCKER_USER"  -p "$ART_DOCKER_TOKEN" $ART_DOCKER
+   - docker build --pull --label "dimensiondata:true" -t "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"  -f docker-images/glider-gun-api/Dockerfile .
+   - docker push "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"
 
   only:
     - master
