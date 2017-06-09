@@ -477,6 +477,9 @@ namespace DD.Research.GliderGun.Api
                 await DockerClient.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
+                // TODO: We can't call DestroyVaultSecrets yet - can only do that once the container is deleted!
+                //       Instead, we also need a PurgeDeployment method that deletes the container and calls DestroyVaultSecrets.
+
                 return true;
             }
             catch (Exception unexpectedError)
