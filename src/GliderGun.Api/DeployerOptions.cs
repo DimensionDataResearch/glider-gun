@@ -6,6 +6,7 @@ namespace DD.Research.GliderGun.Api
     {
         public string   LocalStateDirectory { get; set; }
         public string   HostStateDirectory { get; set; }
+        public string   DockerImageRegistry { get; set; }
         public Uri      DockerEndPoint { get; set; }
     }
 }

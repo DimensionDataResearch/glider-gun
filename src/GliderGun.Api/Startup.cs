@@ -18,20 +18,13 @@ namespace DD.Research.GliderGun.Api
     public class Startup
     {
 
-        public Startup(IHostingEnvironment env)
-        {           
-            // Configuration = new ConfigurationBuilder()
-            //     .SetBasePath(Directory.GetCurrentDirectory())
-            //     .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-            //     .AddJsonFile($"appsettings.{env.EnvironmentName}.json", optional: true)
-            //     .AddEnvironmentVariables("GG_")
-            //     .Build();
-        }
-
         /// <summary>
         ///     The application configuration.
         /// </summary>
         static IConfiguration Configuration { get; set; }
+
+
+        static string[] CommandLineArguments { get; set; }
 
        /// <summary>
         ///     Configure application services.
@@ -45,6 +38,15 @@ namespace DD.Research.GliderGun.Api
 
             services.AddOptions();
             services.Configure<DeployerOptions>(Configuration);
+
+            var dockerRegistryConfiguration = new ConfigurationBuilder()              
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile(Configuration["DockerRegistrySettingsDorectory"] + "/dockerregistrysettings.json") 
+                .AddCommandLine(CommandLineArguments)          
+                .AddEnvironmentVariables("GG_")
+                .Build();
+
+            services.Configure<DockerRegistryOptions>(dockerRegistryConfiguration);
 
             services.AddMvc()
                 .AddJsonOptions(json =>
@@ -82,13 +84,16 @@ namespace DD.Research.GliderGun.Api
             logger.LogInformation("HostStateDirectory: '{HostStateDirectory}'.",
                 Configuration["HostStateDirectory"]
             );
+             logger.LogInformation("DockerRegistrySettingsDorectory: '{DockerRegistrySettingsDorectory}'.",
+                Configuration["DockerRegistrySettingsDorectory"]
+            );
 
             app.UseDeveloperExceptionPage();
 
             // Dump out the API key (if supplied).
             app.Use(next => async context =>
             {
-                if (context.Request.Headers.ContainsKey("apikey"))
+                if (context.Request.Headers.ContainsKey("X-apikey"))
                 {
                     logger.LogInformation("API Key: '{ApiKey}'.",
                         context.Request.Headers["apikey"].FirstOrDefault()
@@ -120,7 +125,9 @@ namespace DD.Research.GliderGun.Api
             SynchronizationContext.SetSynchronizationContext(
                 new SynchronizationContext()
             );
-            Configuration = LoadConfiguration(commandLineArguments);
+
+            CommandLineArguments = commandLineArguments;
+            Configuration = LoadApplicationConfiguration(commandLineArguments);
             
             IWebHost host = new WebHostBuilder()
                 .UseUrls("http://*:5050/")
@@ -141,13 +148,13 @@ namespace DD.Research.GliderGun.Api
         /// <returns>
         ///     The configuration.
         /// </returns>
-        static IConfiguration LoadConfiguration(string[] commandLineArguments)
+        static IConfiguration LoadApplicationConfiguration(string[] commandLineArguments)
         {
             return new ConfigurationBuilder()              
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
-                .AddCommandLine(commandLineArguments)
+                .AddJsonFile("appsettings.json")           
                 .AddEnvironmentVariables("GG_")
+                .AddCommandLine(commandLineArguments)
                 .Build();
         }
     }

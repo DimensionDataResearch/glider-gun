@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.IO;
+using System.Net;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -46,6 +47,22 @@ namespace DD.Research.GliderGun.Api.Controllers
         {
             Image[] deployments = await _deployer.GetImagesAsync();
             return Ok(deployments);
-        }        
+        }    
+
+          /// <summary>
+        ///     List all deployments.
+        /// </summary>
+        /// <returns>
+        ///     A list of deployments.
+        /// </returns>
+        [HttpPost("{sourceTemplateImageName}")]
+        [ProducesResponseType(typeof(bool), 200)]
+        public async Task<IActionResult> PullImageAsync([FromRoute]string sourceTemplateImageName)
+        {          
+            //Bug with C# controller any '/' is coming as encoded
+            var imageName = WebUtility.UrlDecode(sourceTemplateImageName);
+            var result = await _deployer.PullImageAsync(imageName);
+            return Ok(result);
+        }
     }
 }

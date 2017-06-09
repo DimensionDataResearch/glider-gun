@@ -32,6 +32,9 @@ namespace DD.Research.GliderGun.Api
         /// </summary>
         static readonly HttpClient IPConfigClient = new HttpClient();
 
+        private readonly DeployerOptions _deployerOptions;
+        
+        private readonly DockerRegistryOptions _dockerRegistryOptions;
         /// <summary>
         ///     Create a new <see cref="Deployer"/>.
         /// </summary>
@@ -41,32 +44,37 @@ namespace DD.Research.GliderGun.Api
         /// <param name="logger">
         ///     The deployer logger.
         /// </summary>
-        public Deployer(IOptions<DeployerOptions> deployerOptions, ILogger<Deployer> logger)
+        public Deployer(IOptions<DeployerOptions> deployerOptions, IOptions<DockerRegistryOptions> dockerRegistryOptions, ILogger<Deployer> logger)
         {
             if (deployerOptions == null)
                 throw new ArgumentNullException(nameof(deployerOptions));
 
+            if (dockerRegistryOptions == null)
+                throw new ArgumentNullException(nameof(dockerRegistryOptions));
+
             if (logger == null)
                 throw new ArgumentNullException(nameof(logger));
 
-            DeployerOptions options = deployerOptions.Value;
+            _deployerOptions = deployerOptions.Value;
+            _dockerRegistryOptions = dockerRegistryOptions.Value;
+
             Log = logger;
 
             LocalStateDirectory = new DirectoryInfo(
-                Path.Combine(Directory.GetCurrentDirectory(), options.LocalStateDirectory)
+                Path.Combine(Directory.GetCurrentDirectory(), _deployerOptions.LocalStateDirectory)
             );
             logger.LogInformation("Final value for LocalStateDirectory is '{LocalStateDirectory}'.",
                 LocalStateDirectory.FullName
             );
             HostStateDirectory = new DirectoryInfo(
-                Path.Combine(Directory.GetCurrentDirectory(), options.HostStateDirectory)
+                Path.Combine(Directory.GetCurrentDirectory(), _deployerOptions.HostStateDirectory)
             );
             logger.LogInformation("Final value for HostStateDirectory is '{HostStateDirectory}'.",
                 HostStateDirectory.FullName
             );
 
             Client =
-                new DockerClientConfiguration(options.DockerEndPoint)
+                new DockerClientConfiguration(_deployerOptions.DockerEndPoint)
                     .CreateClient();
         }
 
@@ -125,7 +133,7 @@ namespace DD.Research.GliderGun.Api
             return deployments.ToArray();
         }
 
-                /// <summary>
+        /// <summary>
         ///     Get all deployments.
         /// </summary>
         /// <returns>
@@ -140,7 +148,13 @@ namespace DD.Research.GliderGun.Api
             // Find all containers that have a "deployment.id" label.
             ImagesListParameters listParameters = new ImagesListParameters
             {
-                All = true
+                All = false,
+                Filters = new Dictionary<string, IDictionary<string, bool>>(){
+                    ["label"] = new FilterDictionary
+                    {
+                        ["dimensiondata"] = true
+                    }
+                }
             };
             IList<ImagesListResponse> imageListings = await Client.Images.ListImagesAsync(listParameters);
 
@@ -151,6 +165,51 @@ namespace DD.Research.GliderGun.Api
             Log.LogInformation("Retrieved {DeploymentCount} deployments.", images.Count);
 
             return images.ToArray();
+        }
+
+
+        /// <summary>
+        ///     Pulls an image from registry
+        /// </summary>
+        /// <returns>
+        ///     Fully qualified image name
+        /// </returns>
+        public async Task<string> PullImageAsync(string templateImageName)
+        {
+            List<Image> images = new List<Image>();
+            
+            var fullyQualifiedTemplateImageTag = GetFullyQualifiedImageName(templateImageName);
+           
+            Log.LogInformation("Pulling an image ...{fullyQualifiedTemplateImageTag}", fullyQualifiedTemplateImageTag);
+
+            // Attach the docker registry credentials to the request
+            AuthConfig auth = GetDockerRegistryAuthenticationOption();          
+
+            ImagesPullParameters imageParrameters = new ImagesPullParameters
+            {
+               Parent = fullyQualifiedTemplateImageTag              
+            };
+
+            try
+            {
+                var stream = await Client.Images.PullImageAsync(imageParrameters, auth);
+        
+                StringBuilder builder = new StringBuilder();
+                using (StreamReader sr = new StreamReader(stream))
+                {                                               
+                    if (!sr.EndOfStream)
+                    {
+                        string log = await sr.ReadToEndAsync();   
+                        Log.LogInformation("Image pulled finished.. {fullyQualifiedTemplateImageTag}, details: {log}", fullyQualifiedTemplateImageTag, log);                        
+                    }                    
+                }
+            }
+            catch(Exception ex)
+            {
+                  Log.LogError("Image pulled Failed.. {fullyQualifiedTemplateImageTag}, details {ex}", fullyQualifiedTemplateImageTag, ex);
+                  return string.Empty;  
+            }
+            return fullyQualifiedTemplateImageTag;
         }
 
         /// <summary>
@@ -211,7 +270,7 @@ namespace DD.Research.GliderGun.Api
                 if (!sr.EndOfStream)
                 {
                     string log = await sr.ReadToEndAsync();  
-                    deployment.Logs.Add(new DeploymentLog(){LogFile = "Console", LogContent = log });                   
+                    deployment.Logs.Add(new DeploymentLog(){LogFile = "ContainerLog", LogContent = log });                   
                 }                    
             }
             
@@ -246,9 +305,15 @@ namespace DD.Research.GliderGun.Api
             if (templateParameters == null)
                 throw new ArgumentNullException(nameof(templateParameters));
 
+            // Pull the image from Registry explicitly before running it.
+
+            var success = await PullImageAsync(templateImageTag);
+            
+            var fullyQualifiedTemplateImageTag = GetFullyQualifiedImageName(templateImageTag);
+                       
             try
             {
-                Log.LogInformation("Starting deployment '{DeploymentId}' using image '{ImageTag}'...", deploymentId, templateImageTag);
+                Log.LogInformation("Starting deployment '{DeploymentId}' using image '{ImageTag}'...", deploymentId, fullyQualifiedTemplateImageTag);
 
                 Log.LogInformation("Determining deployer's external IP address...");
                 IPAddress deployerIPAddress = await GetDeployerIPAddressAsync();
@@ -266,7 +331,7 @@ namespace DD.Research.GliderGun.Api
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
                     Name = "deploy-" + deploymentId,
-                    Image = templateImageTag,
+                    Image = fullyQualifiedTemplateImageTag,
                     AttachStdout = true,
                     AttachStderr = true,
                     HostConfig = new HostConfig
@@ -286,8 +351,8 @@ namespace DD.Research.GliderGun.Api
                         ["task.type"] = "deployment",
                         ["deployment.id"] = deploymentId,
                         ["deployment.action"] = "Deploy",
-                        ["deployment.image.deploy.tag"] = templateImageTag,
-                        ["deployment.image.destroy.tag"] = GetDestroyerImageTag(templateImageTag)
+                        ["deployment.image.deploy.tag"] = fullyQualifiedTemplateImageTag,
+                        ["deployment.image.destroy.tag"] = GetDestroyerImageTag(fullyQualifiedTemplateImageTag)
                     }
                 };
 
@@ -676,6 +741,28 @@ namespace DD.Research.GliderGun.Api
                 image.Tags.AddRange(imageListing.RepoTags);
 
             return image;
+        }
+
+        private AuthConfig GetDockerRegistryAuthenticationOption()
+        {
+            AuthConfig auth = null;
+            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
+            {
+                auth = new AuthConfig() 
+                { 
+                    Username = _dockerRegistryOptions.DockerImageRegistryUser, 
+                    Password = _dockerRegistryOptions.DockerImageRegistryPassword, 
+                    Email = " ", 
+                    ServerAddress = _dockerRegistryOptions.DockerImageRegistryAddress
+                };
+            }
+            return auth;
+        }
+        private string GetFullyQualifiedImageName(string templateImageName)
+        {
+            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
+                templateImageName = _dockerRegistryOptions.DockerImageRegistryAddress + "/" + templateImageName;
+            return templateImageName;
         }
 
         /// <summary>

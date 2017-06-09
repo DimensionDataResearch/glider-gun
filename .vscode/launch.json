@@ -7,7 +7,7 @@
             "request": "launch",
             "preLaunchTask": "build",
             "program": "${workspaceRoot}/src/GliderGun.Api/bin/Debug/netcoreapp1.1/GliderGun.Api.dll",
-            "args": ["--DockerEndPoint","tcp://localhost:2375"],
+            "args": ["--DockerEndPoint","tcp://localhost:2375","--DockerImageRegistry","artifactory.devops.itaas-cloud.com:7443"],
             "cwd": "${workspaceRoot}/src/GliderGun.Api",
             "stopAtEntry": false,
             "internalConsoleOptions": "openOnSessionStart",
