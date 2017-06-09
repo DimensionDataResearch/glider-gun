@@ -92,7 +92,10 @@ namespace DD.Research.GliderGun.Api.Controllers
                 return BadRequest(ModelState);            
 
             string deploymentId = HttpContext.TraceIdentifier;
-            bool started = await _deployer.DeployAsync(deploymentId, model.ImageName, model.Parameters);
+            bool started = await _deployer.DeployAsync(deploymentId, model.ImageName,
+                model.GetTemplateParameters(),
+                model.GetSensitiveTemplateParameters()
+            );
 
             return Ok(new Deployment
             {

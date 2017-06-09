@@ -41,7 +41,7 @@ namespace DD.Research.GliderGun.Api
 
             var dockerRegistryConfiguration = new ConfigurationBuilder()              
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile(Configuration["DockerRegistrySettingsDorectory"] + "/dockerregistrysettings.json") 
+                .AddJsonFile(Configuration["DockerRegistrySettingsDirectory"] + "/dockerregistrysettings.json") 
                 .AddCommandLine(CommandLineArguments)          
                 .AddEnvironmentVariables("GG_")
                 .Build();
@@ -56,10 +56,15 @@ namespace DD.Research.GliderGun.Api
 						new StringEnumConverter()
 					);
 				});
-           services.AddSwaggerGen(c =>
+            
+            services.AddSwaggerGen(swagger =>
+            {
+                swagger.SwaggerDoc("v1", new Info
                 {
-                    c.SwaggerDoc("v1", new Info { Title = "Glider Gun API", Version = "v1" });
+                    Title = "Glider Gun API",
+                    Version = "v1"
                 });
+            });
 
             services.AddTransient<Deployer>();
         }
@@ -84,8 +89,8 @@ namespace DD.Research.GliderGun.Api
             logger.LogInformation("HostStateDirectory: '{HostStateDirectory}'.",
                 Configuration["HostStateDirectory"]
             );
-             logger.LogInformation("DockerRegistrySettingsDorectory: '{DockerRegistrySettingsDorectory}'.",
-                Configuration["DockerRegistrySettingsDorectory"]
+             logger.LogInformation("DockerRegistrySettingsDirectory: '{DockerRegistrySettingsDirectory}'.",
+                Configuration["DockerRegistrySettingsDirectory"]
             );
 
             app.UseDeveloperExceptionPage();

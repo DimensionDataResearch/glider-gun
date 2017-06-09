@@ -22,5 +22,6 @@
     <PackageReference Include="Newtonsoft.Json" Version="9.0.1"/>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="1.0.0"/>
     <PackageReference Include="System.Reactive" Version="3.0.0"/>
+    <PackageReference Include="VaultSharp" Version="0.6.4" />
   </ItemGroup>
 </Project>

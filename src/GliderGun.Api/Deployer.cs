@@ -1,6 +1,7 @@
 using Docker.DotNet;
 using Docker.DotNet.Models;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -12,7 +13,8 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Options;
+using VaultSharp;
+using VaultSharp.Backends.Authentication.Models.Token;
 
 namespace DD.Research.GliderGun.Api
 {
@@ -21,6 +23,7 @@ namespace DD.Research.GliderGun.Api
 
     using FiltersDictionary = Dictionary<string, IDictionary<string, bool>>;
     using FilterDictionary = Dictionary<string, bool>;
+    using VaultSharp.Backends.System.Models;
 
     /// <summary>
     ///     The executor for deployment jobs via Docker.
@@ -73,9 +76,12 @@ namespace DD.Research.GliderGun.Api
                 HostStateDirectory.FullName
             );
 
-            Client =
-                new DockerClientConfiguration(_deployerOptions.DockerEndPoint)
-                    .CreateClient();
+            DockerClient = new DockerClientConfiguration(_deployerOptions.DockerEndPoint).CreateClient();
+
+            VaultClient = VaultClientFactory.CreateVaultClient(
+                _deployerOptions.VaultEndPoint,
+                new TokenAuthenticationInfo(_deployerOptions.VaultToken)
+            );
         }
 
         /// <summary>
@@ -96,7 +102,12 @@ namespace DD.Research.GliderGun.Api
         /// <summary>
         ///     The Docker API client.
         /// </summary>
-        DockerClient Client { get; }
+        DockerClient DockerClient { get; }
+
+        /// <summary>
+        ///     The Vault API client.
+        /// </summary>
+        IVaultClient VaultClient { get; }
 
         /// <summary>
         ///     Get all deployments.
@@ -122,7 +133,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 }
             };
-            IList<ContainerListResponse> containerListings = await Client.Containers.ListContainersAsync(listParameters);
+            IList<ContainerListResponse> containerListings = await DockerClient.Containers.ListContainersAsync(listParameters);
 
             deployments.AddRange(containerListings.Select(
                 containerListing => ToDeploymentModel(containerListing)
@@ -156,7 +167,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 }
             };
-            IList<ImagesListResponse> imageListings = await Client.Images.ListImagesAsync(listParameters);
+            IList<ImagesListResponse> imageListings = await DockerClient.Images.ListImagesAsync(listParameters);
 
             images.AddRange(imageListings.Select(
                 containerListing => ToImageModel(containerListing)
@@ -192,7 +203,7 @@ namespace DD.Research.GliderGun.Api
 
             try
             {
-                var stream = await Client.Images.PullImageAsync(imageParrameters, auth);
+                var stream = await DockerClient.Images.PullImageAsync(imageParrameters, auth);
         
                 StringBuilder builder = new StringBuilder();
                 using (StreamReader sr = new StreamReader(stream))
@@ -240,7 +251,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 }
             };
-            IList<ContainerListResponse> containerListings = await Client.Containers.ListContainersAsync(listParameters);
+            IList<ContainerListResponse> containerListings = await DockerClient.Containers.ListContainersAsync(listParameters);
 
             ContainerListResponse newestMatchingContainer =
                 containerListings
@@ -255,7 +266,7 @@ namespace DD.Research.GliderGun.Api
             
             Deployment deployment = ToDeploymentModel(newestMatchingContainer);
 
-            var stream = await Client.Containers.GetContainerLogsAsync(newestMatchingContainer.ID, 
+            var stream = await DockerClient.Containers.GetContainerLogsAsync(newestMatchingContainer.ID, 
             new ContainerLogsParameters()
                 {
                     ShowStderr = true,
@@ -297,7 +308,7 @@ namespace DD.Research.GliderGun.Api
         /// 
         ///     TODO: Consider returning an enum instead.
         /// </returns>
-        public async Task<bool> DeployAsync(string deploymentId, string templateImageTag, IDictionary<string, string> templateParameters)
+        public async Task<bool> DeployAsync(string deploymentId, string templateImageTag, IDictionary<string, string> templateParameters, IDictionary<string, string> sensitiveTemplateParameters)
         {
             if (String.IsNullOrWhiteSpace(templateImageTag))
                 throw new ArgumentException("Must supply a valid template image name.", nameof(templateImageTag));
@@ -305,12 +316,15 @@ namespace DD.Research.GliderGun.Api
             if (templateParameters == null)
                 throw new ArgumentNullException(nameof(templateParameters));
 
+            if (sensitiveTemplateParameters == null)
+                throw new ArgumentNullException(nameof(sensitiveTemplateParameters));
+
             // Pull the image from Registry explicitly before running it.
 
             var success = await PullImageAsync(templateImageTag);
             
             var fullyQualifiedTemplateImageTag = GetFullyQualifiedImageName(templateImageTag);
-                       
+
             try
             {
                 Log.LogInformation("Starting deployment '{DeploymentId}' using image '{ImageTag}'...", deploymentId, fullyQualifiedTemplateImageTag);
@@ -327,6 +341,7 @@ namespace DD.Research.GliderGun.Api
                 Log.LogInformation("Host state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentHostStateDirectory.FullName);
                 
                 WriteTemplateParameters(templateParameters, deploymentLocalStateDirectory);
+                await CreateVaultSecrets(deploymentId, sensitiveTemplateParameters);
 
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
@@ -356,12 +371,12 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerResponse newContainer = await Client.Containers.CreateContainerAsync(createParameters);
+                CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
                 string containerId = newContainer.ID;
                 Log.LogInformation("Created container '{ContainerId}'.", containerId);
 
-                await Client.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
+                await DockerClient.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
                 return true;
@@ -394,7 +409,7 @@ namespace DD.Research.GliderGun.Api
 
             try
             {
-                IList<ContainerListResponse> matchingContainers = await Client.Containers.ListContainersAsync(new ContainersListParameters
+                IList<ContainerListResponse> matchingContainers = await DockerClient.Containers.ListContainersAsync(new ContainersListParameters
                 {
                     All = true,
                     Filters = new FiltersDictionary
@@ -454,12 +469,12 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerResponse newContainer = await Client.Containers.CreateContainerAsync(createParameters);
+                CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
                 string containerId = newContainer.ID;
                 Log.LogInformation("Created container '{ContainerId}'.", containerId);
 
-                await Client.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
+                await DockerClient.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
                 return true;
@@ -546,6 +561,57 @@ namespace DD.Research.GliderGun.Api
                 variables.Count,
                 variablesFile.FullName
             );
+        }
+
+        /// <summary>
+        ///     Asynchronously create Vault secrets relating to the specified deployment.
+        /// </summary>
+        /// <param name="deploymentId">
+        ///     The deployment Id.
+        /// </param>
+        /// <param name="sensitiveTemplateParameters">
+        ///     The template parameters to store in Vault.
+        /// </param>
+        /// <returns>
+        ///     A <see cref="Task"/> representing the asynchronous operation.
+        /// </returns>
+        async Task CreateVaultSecrets(string deploymentId, IDictionary<string, string> sensitiveTemplateParameters)
+        {
+            if (String.IsNullOrWhiteSpace(deploymentId))
+                throw new ArgumentException("Invalid deployment Id.", nameof(deploymentId));
+
+            if (sensitiveTemplateParameters == null)
+                throw new ArgumentNullException(nameof(sensitiveTemplateParameters));
+
+            string vaultPath = Path.Combine(_deployerOptions.VaultPath, deploymentId);
+            var secretParameters = new Dictionary<string, object>();
+            foreach (var sensitiveParameter in sensitiveTemplateParameters)
+                secretParameters[sensitiveParameter.Key] = sensitiveParameter.Value;
+
+            await VaultClient.WriteSecretAsync(vaultPath,
+                values: sensitiveTemplateParameters.ToDictionary(
+                    item => item.Key,
+                    item => (object)item.Value
+                )
+            );
+        }
+
+        /// <summary>
+        ///     Asynchronously destroy Vault secrets relating to the specified deployment.
+        /// </summary>
+        /// <param name="deploymentId">
+        ///     The deployment Id.
+        /// </param>
+        /// <returns>
+        ///     A <see cref="Task"/> representing the asynchronous operation.
+        /// </returns>
+        async Task DestroyVaultSecrets(string deploymentId)
+        {
+            if (String.IsNullOrWhiteSpace(deploymentId))
+                throw new ArgumentException("Invalid deployment Id.", nameof(deploymentId));
+
+            string vaultPath = Path.Combine(_deployerOptions.VaultPath, deploymentId);
+            await VaultClient.DeleteSecretAsync(vaultPath);
         }
 
         /// <summary>
