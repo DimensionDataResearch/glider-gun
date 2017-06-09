@@ -9,6 +9,12 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using Swashbuckle.AspNetCore.Swagger;
+using System.Net;
+using Microsoft.AspNetCore.Diagnostics;
+using Newtonsoft.Json;
+using System.Text;
+using DD.Research.GliderGun.Api.Models;
+using Microsoft.AspNetCore.Http.Extensions;
 
 namespace DD.Research.GliderGun.Api
 {
@@ -56,6 +62,8 @@ namespace DD.Research.GliderGun.Api
 						new StringEnumConverter()
 					);
 				});
+
+                
            services.AddSwaggerGen(c =>
                 {
                     c.SwaggerDoc("v1", new Info { Title = "Glider Gun API", Version = "v1" });
@@ -88,20 +96,47 @@ namespace DD.Research.GliderGun.Api
                 Configuration["DockerRegistrySettingsDorectory"]
             );
 
-            app.UseDeveloperExceptionPage();
-
-            // Dump out the API key (if supplied).
+            if(env.IsDevelopment())
+            {
+                app.UseDeveloperExceptionPage();
+                app.UseWelcomePage("/");
+            }
+            
+            // Dump out the Activity Id (if supplied).
             app.Use(next => async context =>
             {
-                if (context.Request.Headers.ContainsKey("X-apikey"))
+                if (context.Request.Headers.ContainsKey(Constants.ActivityIdHeaderName))
                 {
-                    logger.LogInformation("API Key: '{ApiKey}'.",
-                        context.Request.Headers["apikey"].FirstOrDefault()
-                    );
+                    logger.LogInformation("Activity Id: '{ActivityId}'.", context.Request.Headers[Constants.ActivityIdHeaderName].FirstOrDefault());
                 }
                 
                 await next(context);
             });
+
+            // Error Logging Middle Ware
+           app.UseExceptionHandler(
+                builder =>
+                {
+                    builder.Run(
+                    async context =>
+                    {
+                        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+                        context.Response.ContentType = "application/json";
+                        var ex = context.Features.Get<IExceptionHandlerFeature>();
+                        if (ex != null)
+                        {
+                            var err = JsonConvert.SerializeObject(new ErrorResponse()
+                            {
+                                ErrorCode = "UnKnownError",
+                                StackTrace = ex.Error.StackTrace,
+                                Message = ex.Error.Message
+                            });
+                            await context.Response.Body.WriteAsync(Encoding.ASCII.GetBytes(err),0,err.Length).ConfigureAwait(false);
+                        }
+                    });
+                }
+            );
+
             app.UseMvc();
 
             // Enable middleware to serve generated Swagger as a JSON endpoint.

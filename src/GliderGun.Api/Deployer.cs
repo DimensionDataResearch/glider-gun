@@ -207,7 +207,7 @@ namespace DD.Research.GliderGun.Api
             catch(Exception ex)
             {
                   Log.LogError("Image pulled Failed.. {fullyQualifiedTemplateImageTag}, details {ex}", fullyQualifiedTemplateImageTag, ex);
-                  return string.Empty;  
+                  throw;
             }
             return fullyQualifiedTemplateImageTag;
         }
@@ -246,6 +246,7 @@ namespace DD.Research.GliderGun.Api
                 containerListings
                     .OrderByDescending(container => container.Created)
                     .FirstOrDefault();
+                    
             if (newestMatchingContainer == null)
             {
                 Log.LogInformation("Deployment '{DeploymentId}' not found.", deploymentId);
@@ -370,7 +371,7 @@ namespace DD.Research.GliderGun.Api
             {
                 Log.LogError("Unexpected error while executing deployment '{DeploymentId}': {Error}", deploymentId, unexpectedError);
 
-                return false;
+                throw;
             }
         }
 
@@ -405,11 +406,11 @@ namespace DD.Research.GliderGun.Api
                         }
                     }
                 });
+
                 if (matchingContainers.Count == 0)
                 {
-                    Log.LogError("Deployment '{DeploymentId}' not found.");
-
-                    return false;
+                    Log.LogError("Deployment '{DeploymentId}' not found.", deploymentId);
+                    throw new InvalidOperationException($"Deployment '{deploymentId}' not found.");
                 }
 
                 string destroyerImageTag = matchingContainers[0].Labels["deployment.image.destroy.tag"];
@@ -468,7 +469,7 @@ namespace DD.Research.GliderGun.Api
             {
                 Log.LogError("Unexpected error while destroying deployment '{DeploymentId}': {Error}", deploymentId, unexpectedError);
 
-                return false;
+                throw;
             }
         }
 
@@ -746,7 +747,9 @@ namespace DD.Research.GliderGun.Api
         private AuthConfig GetDockerRegistryAuthenticationOption()
         {
             AuthConfig auth = null;
-            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
+            if(_dockerRegistryOptions != null 
+            && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress)
+            && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryUser))
             {
                 auth = new AuthConfig() 
                 { 
