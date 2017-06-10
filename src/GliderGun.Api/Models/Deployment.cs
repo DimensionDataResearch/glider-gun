@@ -30,9 +30,14 @@ namespace DD.Research.GliderGun.Api.Models
         public string Action { get; set; }
 
         /// <summary>
+        ///     The message (if any) currently associated with the deployment.
+        /// </summary>
+        public string Message { get; set; }
+
+        /// <summary>
         ///     Is the deployment complete?
         /// </summary>
-        public bool IsComplete => State == DeploymentState.Successful || State == DeploymentState.Failed;
+        public bool IsComplete => State == DeploymentState.Deployed || State == DeploymentState.Failed;
 
         /// <summary>
         ///     The deployment logs (once the deployment is complete).

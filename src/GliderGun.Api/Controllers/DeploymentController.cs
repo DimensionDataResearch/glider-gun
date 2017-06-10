@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 namespace DD.Research.GliderGun.Api.Controllers
 {
+    using System.Net;
     using Models;
 
     /// <summary>
@@ -92,17 +93,23 @@ namespace DD.Research.GliderGun.Api.Controllers
                 return BadRequest(ModelState);            
 
             string deploymentId = HttpContext.TraceIdentifier;
-            bool started = await _deployer.DeployAsync(deploymentId, model.ImageName,
+            DeploymentState deploymentState = await _deployer.DeployAsync(deploymentId, model.ImageName,
                 model.GetTemplateParameters(),
                 model.GetSensitiveTemplateParameters()
             );
 
-            return Ok(new Deployment
+            Deployment deployment = new Deployment
             {
-                Action = "Deployment Requested",
-                State = DeploymentState.Initiated,
+                Message = "Deployment Requested",
+                State = deploymentState,
                 Id = deploymentId
-            });
+            };
+            if (deployment.State == DeploymentState.Initiated)
+                return Ok(deployment);
+
+            Response.Headers.Add("ErrorCode", "DeploymentFailed");
+
+            return Content(deployment, HttpStatusCode.InternalServerError);
         }
 
         /// <summary>
@@ -114,14 +121,81 @@ namespace DD.Research.GliderGun.Api.Controllers
         [HttpPost("{deploymentId}/destroy")]
         public async Task<IActionResult> DestroyDeployment(string deploymentId)
         {
-            bool started = await _deployer.DestroyAsync(deploymentId);
-
-            return Ok(new Deployment
+            Deployment deployment = await _deployer.GetDeploymentAsync(deploymentId);
+            if (deployment == null)
             {
-                Action = "Deployment Deletion Requested",
-                State = DeploymentState.Deleted,
-                Id = deploymentId
-            });
+                Response.Headers.Add("ErrorCode", "DeploymentNotFound");
+
+                return NotFound(new ErrorResponse
+                {
+                    ErrorCode = "DeploymentNotFound",
+                    Message = $"No deployment was found with Id '{deploymentId}'."
+                });
+            }
+
+            deployment.Logs.Clear();
+            deployment.Message = "Deployment is being destroyed";
+            deployment.State = await _deployer.DestroyAsync(deploymentId);
+            if (deployment.State == DeploymentState.Running)
+                return Ok(deployment);
+
+            Response.Headers.Add("ErrorCode", "DeploymentFailed");
+
+            return Content(deployment, HttpStatusCode.InternalServerError);
+        }
+
+        /// <summary>
+        ///     Purge a deployment.
+        /// </summary>
+        /// <returns>
+        ///     The deployment purge result.
+        /// </returns>
+        [HttpPost("{deploymentId}/purge")]
+        public async Task<IActionResult> PurgeDeployment(string deploymentId)
+        {
+            Deployment deployment = await _deployer.GetDeploymentAsync(deploymentId);
+            if (deployment == null)
+            {
+                Response.Headers.Add("ErrorCode", "DeploymentNotFound");
+
+                return NotFound(new ErrorResponse
+                {
+                    ErrorCode = "DeploymentNotFound",
+                    Message = $"No deployment was found with Id '{deploymentId}'."
+                });
+            }
+
+            deployment.State = await _deployer.PurgeAsync(deploymentId);
+            if (deployment.State == DeploymentState.Deleted)
+            {
+                deployment.Message = "Deployment purged.";
+
+                return Ok(deployment);
+            }
+            
+            deployment.Message = "Deployment purge failed.";
+
+            Response.Headers.Add("ErrorCode", "DeploymentFailed");
+
+            return Content(deployment, HttpStatusCode.InternalServerError);
+        }
+
+        /// <summary>
+        ///     Create an action result from the specified content.
+        /// </summary>
+        /// <param name="content">
+        ///     The response content.
+        /// </param>
+        /// <param name="statusCode">
+        ///     An optional response status code.
+        /// </param>
+        /// <returns></returns>
+        IActionResult Content(object content, HttpStatusCode statusCode = HttpStatusCode.OK)
+        {
+            return new ObjectResult(content)
+            {
+                StatusCode = (int)statusCode
+            };
         }
     }
 }

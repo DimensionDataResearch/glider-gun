@@ -178,6 +178,7 @@ namespace DD.Research.GliderGun.Api
             return images.ToArray();
         }
 
+        // TODO: Remove this method (PullImageAsync).
 
         /// <summary>
         ///     Pulls an image from registry
@@ -265,26 +266,9 @@ namespace DD.Research.GliderGun.Api
             }
             
             Deployment deployment = ToDeploymentModel(newestMatchingContainer);
-
-            var stream = await DockerClient.Containers.GetContainerLogsAsync(newestMatchingContainer.ID, 
-            new ContainerLogsParameters()
-                {
-                    ShowStderr = true,
-                    ShowStdout = true,
-                }, 
-                CancellationToken.None);
-
-          
-            StringBuilder builder = new StringBuilder();
-            using (StreamReader sr = new StreamReader(stream))
-            {                                               
-                if (!sr.EndOfStream)
-                {
-                    string log = await sr.ReadToEndAsync();  
-                    deployment.Logs.Add(new DeploymentLog(){LogFile = "ContainerLog", LogContent = log });                   
-                }                    
-            }
-            
+            deployment.Logs.Add(
+                await GetContainerLog(newestMatchingContainer.ID)
+            );
 
             Log.LogInformation("Retrieved deployment '{DeploymentId}'.", deploymentId);
 
@@ -304,11 +288,9 @@ namespace DD.Research.GliderGun.Api
         ///     A dictionary containing global template parameters to be written to the state directory.
         /// </param>
         /// <returns>
-        ///     <c>true</c>, if the deployment was started; otherwise, <c>false</c>.
-        /// 
-        ///     TODO: Consider returning an enum instead.
+        ///     The deployment state.
         /// </returns>
-        public async Task<bool> DeployAsync(string deploymentId, string templateImageTag, IDictionary<string, string> templateParameters, IDictionary<string, string> sensitiveTemplateParameters)
+        public async Task<DeploymentState> DeployAsync(string deploymentId, string templateImageTag, IDictionary<string, string> templateParameters, IDictionary<string, string> sensitiveTemplateParameters)
         {
             if (String.IsNullOrWhiteSpace(templateImageTag))
                 throw new ArgumentException("Must supply a valid template image name.", nameof(templateImageTag));
@@ -379,13 +361,13 @@ namespace DD.Research.GliderGun.Api
                 await DockerClient.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
-                return true;
+                return DeploymentState.Initiated;
             }
             catch (Exception unexpectedError)
             {
                 Log.LogError("Unexpected error while executing deployment '{DeploymentId}': {Error}", deploymentId, unexpectedError);
 
-                return false;
+                return DeploymentState.Failed;
             }
         }
 
@@ -396,11 +378,9 @@ namespace DD.Research.GliderGun.Api
         ///     The deployment Id.
         /// </param>
         /// <returns>
-        ///     <c>true</c>, if the deployment was started; otherwise, <c>false</c>.
-        /// 
-        ///     TODO: Consider returning an enum instead.
+        ///     The deployment state.
         /// </returns>
-        public async Task<bool> DestroyAsync(string deploymentId)
+        public async Task<DeploymentState> DestroyAsync(string deploymentId)
         {
             if (String.IsNullOrWhiteSpace(deploymentId))
                 throw new ArgumentException("Must supply a valid deployment Id.", nameof(deploymentId));
@@ -409,25 +389,15 @@ namespace DD.Research.GliderGun.Api
 
             try
             {
-                IList<ContainerListResponse> matchingContainers = await DockerClient.Containers.ListContainersAsync(new ContainersListParameters
+                ContainerListResponse deploymentContainer = await GetLatestDeploymentContainer(deploymentId);
+                if (deploymentContainer == null)
                 {
-                    All = true,
-                    Filters = new FiltersDictionary
-                    {
-                        ["label"] = new FilterDictionary
-                        {
-                            ["deployment.id=" + deploymentId] = true
-                        }
-                    }
-                });
-                if (matchingContainers.Count == 0)
-                {
-                    Log.LogError("Deployment '{DeploymentId}' not found.");
+                    Log.LogError("Deployment {DeploymentId} not found.", deploymentId);
 
-                    return false;
+                    return DeploymentState.Notfound;
                 }
 
-                string destroyerImageTag = matchingContainers[0].Labels["deployment.image.destroy.tag"];
+                string destroyerImageTag = deploymentContainer.Labels["deployment.image.destroy.tag"];
 
                 Log.LogInformation("Starting destruction of deployment '{DeploymentId}' using image '{DestroyerImageTag}'...", deploymentId, destroyerImageTag);
 
@@ -477,16 +447,63 @@ namespace DD.Research.GliderGun.Api
                 await DockerClient.Containers.StartContainerAsync(containerId, new ContainerStartParameters());
                 Log.LogInformation("Started container: '{ContainerId}'.", containerId);
 
-                // TODO: We can't call DestroyVaultSecrets yet - can only do that once the container is deleted!
-                //       Instead, we also need a PurgeDeployment method that deletes the container and calls DestroyVaultSecrets.
-
-                return true;
+                return DeploymentState.Running;
             }
             catch (Exception unexpectedError)
             {
                 Log.LogError("Unexpected error while destroying deployment '{DeploymentId}': {Error}", deploymentId, unexpectedError);
 
-                return false;
+                return DeploymentState.Failed;
+            }
+        }
+
+        /// <summary>
+        ///     Purage a deployment.
+        /// </summary>
+        /// <param name="deploymentId">
+        ///     The deployment Id.
+        /// </param>
+        /// <returns>
+        ///     The deployment state.
+        /// </returns>
+        public async Task<DeploymentState> PurgeAsync(string deploymentId)
+        {
+            if (String.IsNullOrWhiteSpace(deploymentId))
+                throw new ArgumentException("Must supply a valid deployment Id.", nameof(deploymentId));
+
+            Log.LogInformation("Purging deployment '{DeploymentId}'...", deploymentId);
+
+            try
+            {
+                IList<ContainerListResponse> deploymentContainers = await GetDeploymentContainers(deploymentId);
+                if (deploymentContainers.Count == 0)
+                {
+                    Log.LogError("Deployment {DeploymentId} not found.", deploymentId);
+
+                    return DeploymentState.Notfound;
+                }
+
+                Log.LogInformation("Destroying Vault secrets for deployment {DeploymentId}.", deploymentId);
+                await DestroyVaultSecrets(deploymentId);
+
+                foreach (var deploymentContainer in deploymentContainers)
+                {
+                    Log.LogInformation("Deleting container {ContainerId} for deployment {DeploymentId}.",
+                        deploymentContainer.ID, deploymentId
+                    );
+                    await DockerClient.Containers.RemoveContainerAsync(deploymentContainer.ID, new ContainerRemoveParameters
+                    {
+                        Force = true
+                    });
+                }
+
+                return DeploymentState.Deleted;
+            }
+            catch (Exception unexpectedError)
+            {
+                Log.LogError("Unexpected error while purging deployment '{DeploymentId}': {Error}", deploymentId, unexpectedError);
+
+                return DeploymentState.Failed;
             }
         }
 
@@ -771,7 +788,12 @@ namespace DD.Research.GliderGun.Api
                 case "exited":
                 {
                     if (containerListing.Status != null && containerListing.Status.StartsWith("Exited (0)"))
-                        deployment.State = DeploymentState.Successful;
+                    {
+                        if (deployment.Action == "Deploy")
+                            deployment.State = DeploymentState.Deployed;
+                        else if (deployment.Action == "Destroy")
+                            deployment.State = DeploymentState.Destroyed;
+                    }
                     else
                         deployment.State = DeploymentState.Failed;
 
@@ -795,6 +817,15 @@ namespace DD.Research.GliderGun.Api
             return deployment;
         }
 
+        /// <summary>
+        ///     Convert the Docker API model for an image to a Glider Gun <see cref="Image"/> model.
+        /// </summary>
+        /// <param name="imageListing">
+        ///     The Docker API model to convert.
+        /// </param>
+        /// <returns>
+        ///     The converted <see cref="Image"/> model.
+        /// </returns>
         Image ToImageModel(ImagesListResponse imageListing)
         {
             if (imageListing == null)
@@ -812,26 +843,84 @@ namespace DD.Research.GliderGun.Api
             return image;
         }
 
-        private AuthConfig GetDockerRegistryAuthenticationOption()
+        /// <summary>
+        ///     Get a list of containers associated with the specified deployment.
+        /// </summary>
+        /// <param name="deploymentId">
+        ///     The deployment Id.
+        /// </param>
+        /// <returns>
+        ///     A list of <see cref="ContainerListResponse"/>s representing the containers.
+        /// </returns>
+        async Task<IList<ContainerListResponse>> GetDeploymentContainers(string deploymentId)
         {
-            AuthConfig auth = null;
-            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
-            {
-                auth = new AuthConfig() 
-                { 
-                    Username = _dockerRegistryOptions.DockerImageRegistryUser, 
-                    Password = _dockerRegistryOptions.DockerImageRegistryPassword, 
-                    Email = " ", 
-                    ServerAddress = _dockerRegistryOptions.DockerImageRegistryAddress
-                };
-            }
-            return auth;
+            if (String.IsNullOrWhiteSpace(deploymentId))
+                throw new ArgumentException("Must supply a valid deployment Id.", nameof(deploymentId));
+
+            var matchingContainers = await DockerClient.Containers.ListContainersAsync(new ContainersListParameters{
+                Filters = new FiltersDictionary
+                {
+                    ["label"] = new FilterDictionary
+                    {
+                        [$"deployment.id={deploymentId}"] = true
+                    }
+                }
+            });
+
+            return matchingContainers;
         }
-        private string GetFullyQualifiedImageName(string templateImageName)
+
+        /// <summary>
+        ///     Get the latest container associated with the specified deployment.
+        /// </summary>
+        /// <param name="deploymentId">
+        ///     The deployment Id.
+        /// </param>
+        /// <returns>
+        ///     A <see cref="ContainerListResponse"/> representing the container, or <c>null</c> if no matching containers were found.
+        /// </returns>
+        async Task<ContainerListResponse> GetLatestDeploymentContainer(string deploymentId)
         {
-            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
-                templateImageName = _dockerRegistryOptions.DockerImageRegistryAddress + "/" + templateImageName;
-            return templateImageName;
+            if (String.IsNullOrWhiteSpace(deploymentId))
+                throw new ArgumentException("Must supply a valid deployment Id.", nameof(deploymentId));
+
+            var matchingContainers = await GetDeploymentContainers(deploymentId);
+
+            return matchingContainers.OrderByDescending(container => container.Created).FirstOrDefault();
+        }
+
+        /// <summary>
+        ///     Retrieve the STDOUT / STDERR log for the specified container.
+        /// </summary>
+        /// <param name="containerId">
+        ///     The Id of the target container.
+        /// </param>
+        /// <returns>
+        ///     A <see cref="DeploymentLog"/> representing the container log.
+        /// </returns>
+        async Task<DeploymentLog> GetContainerLog(string containerId)
+        {
+            if (String.IsNullOrWhiteSpace(containerId))
+                throw new ArgumentException("Must supply a valid container Id.", nameof(containerId));
+
+            DeploymentLog containerLog = new DeploymentLog
+            {
+                LogFile = "ContainerLog",
+                LogContent = String.Empty
+            };
+
+            var logParameters = new ContainerLogsParameters
+            {
+                ShowStderr = true,
+                ShowStdout = true
+            };
+            using (Stream logStream = await DockerClient.Containers.GetContainerLogsAsync(containerId, logParameters, CancellationToken.None))
+            using (StreamReader logReader = new StreamReader(logStream))
+            {
+                containerLog.LogContent = await logReader.ReadToEndAsync();
+            }
+
+            return containerLog;
         }
 
         /// <summary>
@@ -897,6 +986,29 @@ namespace DD.Research.GliderGun.Api
             Log.LogInformation("deployerIPAddress = '{DeployerIPAddress}", deployerIPAddress);
 
             return IPAddress.Parse(deployerIPAddress);
+        }
+
+        AuthConfig GetDockerRegistryAuthenticationOption()
+        {
+            AuthConfig auth = null;
+            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
+            {
+                auth = new AuthConfig() 
+                { 
+                    Username = _dockerRegistryOptions.DockerImageRegistryUser, 
+                    Password = _dockerRegistryOptions.DockerImageRegistryPassword, 
+                    Email = " ", 
+                    ServerAddress = _dockerRegistryOptions.DockerImageRegistryAddress
+                };
+            }
+            return auth;
+        }
+
+        string GetFullyQualifiedImageName(string templateImageName)
+        {
+            if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
+                templateImageName = _dockerRegistryOptions.DockerImageRegistryAddress + "/" + templateImageName;
+            return templateImageName;
         }
     }
 }

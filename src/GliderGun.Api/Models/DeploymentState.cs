@@ -26,16 +26,26 @@ namespace DD.Research.GliderGun.Api.Models
         /// <summary>
         ///     The deployment completed successfully.
         /// </summary>
-        Successful  = 3,
+        Deployed    = 3,
+
+        /// <summary>
+        ///     The deployment has been destroyed.
+        /// </summary>
+        Destroyed   = 4,
 
         /// <summary>
         ///     The deployment failed.
         /// </summary>
-        Failed      = 4,
+        Failed      = 5,
 
         /// <summary>
-        ///     The deployment is requested.
+        ///     The deployment has been deleted.
         /// </summary>
-        Deleted = 5,
+        Deleted     = 6,
+
+        /// <summary>
+        ///     The deployment was not found.
+        /// </summary>
+        Notfound    = 7
     }
 }
