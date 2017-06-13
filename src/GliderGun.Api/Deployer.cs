@@ -1035,7 +1035,8 @@ namespace DD.Research.GliderGun.Api
         string GetFullyQualifiedImageName(string templateImageName)
         {
             if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
-                templateImageName = _dockerRegistryOptions.DockerImageRegistryAddress + "/" + templateImageName;
+                templateImageName = _dockerRegistryOptions.DockerImageRegistryAddress + "/" + _deployerOptions.TemplateImageNamePrefix + templateImageName;
+            
             return templateImageName;
         }
     }

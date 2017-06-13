@@ -3,10 +3,10 @@
 # Build this with the context of the repository root folder (../.. relative to this file)
 
 # If building from source
-FROM microsoft/dotnet:1.1.2-sdk
+# FROM microsoft/dotnet:1.1.2-sdk
 
 # If running output of "dotnet publish"
-# FROM microsoft/dotnet:1.1.2-runtime
+FROM microsoft/dotnet:1.1.2-runtime
 
 MAINTAINER Adam Friedman <adam.friedman@itaas.dimensiondata.com>
 
