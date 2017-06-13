@@ -88,10 +88,7 @@ namespace DD.Research.GliderGun.Api.Controllers
         [HttpPost("")]
         [ProducesResponseType(typeof(Deployment), 200)]     
         public async Task<IActionResult> DeployTemplate([FromBody] DeploymentConfiguration model)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);            
-
+        {           
             string deploymentId = HttpContext.TraceIdentifier;
             DeploymentState deploymentState = await _deployer.DeployAsync(deploymentId, model.ImageName,
                 model.GetTemplateParameters(),

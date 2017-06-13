@@ -219,7 +219,7 @@ namespace DD.Research.GliderGun.Api
             catch(Exception ex)
             {
                   Log.LogError("Image pulled Failed.. {fullyQualifiedTemplateImageTag}, details {ex}", fullyQualifiedTemplateImageTag, ex);
-                  return string.Empty;  
+                  throw;
             }
             return fullyQualifiedTemplateImageTag;
         }
@@ -258,6 +258,7 @@ namespace DD.Research.GliderGun.Api
                 containerListings
                     .OrderByDescending(container => container.Created)
                     .FirstOrDefault();
+                    
             if (newestMatchingContainer == null)
             {
                 Log.LogInformation("Deployment '{DeploymentId}' not found.", deploymentId);
@@ -1020,7 +1021,7 @@ namespace DD.Research.GliderGun.Api
             AuthConfig auth = null;
             if(_dockerRegistryOptions != null && !String.IsNullOrWhiteSpace(_dockerRegistryOptions.DockerImageRegistryAddress))
             {
-                auth = new AuthConfig() 
+                auth = new AuthConfig
                 { 
                     Username = _dockerRegistryOptions.DockerImageRegistryUser, 
                     Password = _dockerRegistryOptions.DockerImageRegistryPassword, 

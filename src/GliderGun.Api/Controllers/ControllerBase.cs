@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using System.Net;
+using DD.Research.GliderGun.Api.Filters;
 
 namespace DD.Research.GliderGun.Api.Controllers
 {
     /// <summary>
     ///     The base class for executor API controllers.
     /// </summary>
+    [ModelValidationFilter]
     public abstract class ControllerBase
         : Controller
     {
