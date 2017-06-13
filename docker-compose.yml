@@ -1,0 +1,21 @@
+version: '3'
+
+services:
+  glider-gun-vault:
+    image: vault
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "51c51954-0755-41fa-bde6-b60e2c76501b"
+    ports:
+      - 19241:8200
+
+  glider-gun-api:
+    image: glider-gun-api
+    environment:
+      VAULT_ADDR: "http://glider-gun-vault/"
+      VAULT_TOKEN: "51c51954-0755-41fa-bde6-b60e2c76501b"
+    ports:
+      - 19240:5050
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    links:
+      - glider-gun-vault
