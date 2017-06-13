@@ -9,7 +9,8 @@ namespace DD.Research.GliderGun.Api
         public string   DockerImageRegistry { get; set; }
         public Uri      DockerEndPoint { get; set; }
         public string   TemplateImageNamePrefix { get; set; }
-        public string   Links { get; set; }
+        public string   ContainerNetworkName { get; set; }
+        public string   ContainerLinks { get; set; }
         public Uri      VaultEndPoint { get; set; }
         public string   VaultPath { get; set; }
         public string   VaultToken { get; set; }

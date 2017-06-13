@@ -9,14 +9,17 @@ services:
       - 19241:8200
 
   glider-gun-api:
-    image:  dd/managecompute/glider-gun-api
+    image: dd/managecompute/glider-gun-api:master
     environment:
       GG_VaultEndPoint: "http://glider-gun-vault:8200/"
       GG_VaultToken: "51c51954-0755-41fa-bde6-b60e2c76501b"
-      GG_Links: "glider-gun-vault"
+      GG_ContainerNetworkName: "glidergun_default"
+      GG_ContainerLinks: "glider-gun-vault"
+      GG_HostStateDirectory: "${PWD}/_state"
     ports:
-      - 19240:5050
+      - "19240:5050"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "${PWD}/_state:/var/lib/glider-gun/state"
     links:
       - glider-gun-vault

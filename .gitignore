@@ -259,3 +259,4 @@ _site/
 
 # State directory
 src/GliderGun.Api/state/
+_state/

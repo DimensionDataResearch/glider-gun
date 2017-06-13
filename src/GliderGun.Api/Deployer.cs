@@ -205,22 +205,24 @@ namespace DD.Research.GliderGun.Api
             try
             {
                 var stream = await DockerClient.Images.PullImageAsync(imageParrameters, auth);
-        
-                StringBuilder builder = new StringBuilder();
-                using (StreamReader sr = new StreamReader(stream))
+
+                using (StreamReader reader = new StreamReader(stream))
                 {                                               
-                    if (!sr.EndOfStream)
+                    if (!reader.EndOfStream)
                     {
-                        string log = await sr.ReadToEndAsync();   
-                        Log.LogInformation("Image pulled finished.. {fullyQualifiedTemplateImageTag}, details: {log}", fullyQualifiedTemplateImageTag, log);                        
+                        string log = await reader.ReadToEndAsync();   
+                        
+                        Log.LogInformation("Image pull complete. {fullyQualifiedTemplateImageTag}, details: {log}", fullyQualifiedTemplateImageTag, log);
                     }                    
                 }
             }
-            catch(Exception ex)
+            catch (Exception ePullImage)
             {
-                  Log.LogError("Image pulled Failed.. {fullyQualifiedTemplateImageTag}, details {ex}", fullyQualifiedTemplateImageTag, ex);
+                  Log.LogError("Image pull failed. {fullyQualifiedTemplateImageTag}, details {ex}", fullyQualifiedTemplateImageTag, ePullImage);
+                 
                   throw;
             }
+            
             return fullyQualifiedTemplateImageTag;
         }
 
@@ -303,10 +305,9 @@ namespace DD.Research.GliderGun.Api
                 throw new ArgumentNullException(nameof(sensitiveTemplateParameters));
 
             // Pull the image from Registry explicitly before running it.
-
-            var success = await PullImageAsync(templateImageTag);
+            await PullImageAsync(templateImageTag);
             
-            var fullyQualifiedTemplateImageTag = GetFullyQualifiedImageName(templateImageTag);
+            string fullyQualifiedTemplateImageTag = GetFullyQualifiedImageName(templateImageTag);
 
             try
             {
@@ -363,8 +364,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerLinks(createParameters, targetNetwork);
-                
+                await AddContainerLinks(createParameters);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -420,15 +420,6 @@ namespace DD.Research.GliderGun.Api
                 Log.LogInformation("Local state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentLocalStateDirectory.FullName);
                 Log.LogInformation("Host state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentHostStateDirectory.FullName);
 
-                var networks = await DockerClient.Networks.ListNetworksAsync();
-                var targetNetwork = networks.FirstOrDefault(
-                    network => network.Name == "glidergun_default"
-                );
-                if (targetNetwork == null)
-                    throw new InvalidOperationException("Cannot find target network.");
-
-                Log.LogInformation("Deployment container will be attached to network '{NetworkId}'.", targetNetwork.ID);
-
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
                     Name = "destroy-" + deploymentId,
@@ -461,7 +452,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerLinks(createParameters, targetNetwork);
+                await AddContainerLinks(createParameters);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -664,15 +655,30 @@ namespace DD.Research.GliderGun.Api
         /// <param name="createParameters">
         ///     The container-creation parameters.
         /// </param>
-        void CreateContainerLinks(CreateContainerParameters createParameters, NetworkListResponse targetNetwork)
+        async Task AddContainerLinks(CreateContainerParameters createParameters)
         {
             if (createParameters == null)
                 throw new ArgumentNullException(nameof(createParameters));
 
-            if (targetNetwork == null)
-                throw new ArgumentNullException(nameof(targetNetwork));
+            if (String.IsNullOrWhiteSpace(_deployerOptions.ContainerNetworkName))
+            {
+                Log.LogInformation("ContainerNetworkName has not been configured; no links will be configured for container named {ContainerName}.",
+                    createParameters.Name
+                );
 
-            string[] containerLinks = _deployerOptions.Links
+                return;
+            }
+
+            var networks = await DockerClient.Networks.ListNetworksAsync();
+            var targetNetwork = networks.FirstOrDefault(
+                network => network.Name == _deployerOptions.ContainerNetworkName
+            );
+            if (targetNetwork == null)
+                throw new InvalidOperationException($"Cannot find target network '{_deployerOptions.ContainerNetworkName}'.");
+
+            Log.LogInformation("Deployment container will be attached to network '{NetworkName}' ('{NetworkId}').", targetNetwork.ID);
+
+            string[] containerLinks = _deployerOptions.ContainerLinks
                 .Trim()
                 .Split(
                     new char[] { ';' },
