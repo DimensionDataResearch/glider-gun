@@ -6,14 +6,14 @@ stages:
   - package
 
 build:
- image: microsoft/dotnet:1.1.2-sdk
- stage: build
- script:
-  - 'dotnet restore'
-  - 'dotnet build -c Release'
-  - 'dotnet publish -c Release'
-  - mkdir dotnetapp
-  - cp -rf src/GliderGun.Api/bin/Release/netcoreapp1.1/publish/* dotnetapp
+  image: microsoft/dotnet:1.1.2-sdk
+  stage: build
+  script:
+    - 'dotnet restore'
+    - 'dotnet build -c Release'
+    - 'dotnet publish -c Release'
+    - mkdir dotnetapp
+    - cp -rf src/GliderGun.Api/bin/Release/netcoreapp1.1/publish/* dotnetapp
  
 artifacts:
   paths:
@@ -32,4 +32,3 @@ package:
    - docker login -u "$ART_DOCKER_USER"  -p "$ART_DOCKER_TOKEN" $ART_DOCKER
    - docker build --pull --label dimensiondata=true -t "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"  -f docker-images/glider-gun-api/Dockerfile .
    - docker push "$ART_DOCKER/$CI_PROJECT_NAME:$IMAGE_TAG"
-
