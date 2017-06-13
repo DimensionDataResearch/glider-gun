@@ -14,11 +14,10 @@ build:
   - 'dotnet publish -c Release'
   - mkdir dotnetapp
   - cp -rf src/GliderGun.Api/bin/Release/netcoreapp1.1/publish/* dotnetapp
- only:
-   - master
- artifacts:
-  paths:
-    - dotnetapp/
+ 
+  artifacts:
+    paths:
+      - dotnetapp/
 
 package:
   image : docker:latest
