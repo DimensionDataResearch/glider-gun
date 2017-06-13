@@ -353,14 +353,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                string[] containerLinks = _deployerOptions.Links
-                    .Trim()
-                    .Split(
-                        new char[] { ';' },
-                        StringSplitOptions.RemoveEmptyEntries
-                    );
-                if (containerLinks.Length > 0)
-                    createParameters.HostConfig.Links = new List<string>(containerLinks);
+                CreateContainerLinks(createParameters);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -448,14 +441,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                string[] containerLinks = _deployerOptions.Links
-                    .Trim()
-                    .Split(
-                        new char[] { ';' },
-                        StringSplitOptions.RemoveEmptyEntries
-                    );
-                if (containerLinks.Length > 0)
-                    createParameters.HostConfig.Links = new List<string>(containerLinks);
+                CreateContainerLinks(createParameters);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -650,6 +636,29 @@ namespace DD.Research.GliderGun.Api
 
             string vaultPath = Path.Combine(_deployerOptions.VaultPath, deploymentId);
             await VaultClient.DeleteSecretAsync(vaultPath);
+        }
+
+        /// <summary>
+        ///     Add links (if any) for the specified container.
+        /// </summary>
+        /// <param name="createParameters">
+        ///     The container-creation parameters.
+        /// </param>
+        void CreateContainerLinks(CreateContainerParameters createParameters)
+        {
+            if (createParameters == null)
+                throw new ArgumentNullException(nameof(createParameters));
+
+            string[] containerLinks = _deployerOptions.Links
+                .Trim()
+                .Split(
+                    new char[] { ';' },
+                    StringSplitOptions.RemoveEmptyEntries
+                );
+            if (containerLinks.Length == 0)
+                return;
+                
+            createParameters.HostConfig.Links = new List<string>(containerLinks);
         }
 
         /// <summary>
