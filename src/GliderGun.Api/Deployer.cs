@@ -326,6 +326,15 @@ namespace DD.Research.GliderGun.Api
                 WriteTemplateParameters(templateParameters, deploymentLocalStateDirectory);
                 await CreateVaultSecrets(deploymentId, sensitiveTemplateParameters);
 
+                var networks = await DockerClient.Networks.ListNetworksAsync();
+                var targetNetwork = networks.FirstOrDefault(
+                    network => network.Name == "glidergun_default"
+                );
+                if (targetNetwork == null)
+                    throw new InvalidOperationException("Cannot find target network.");
+
+                Log.LogInformation("Deployment container will be attached to network '{NetworkId}'.", targetNetwork.ID);
+
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
                     Name = "deploy-" + deploymentId,
@@ -354,7 +363,8 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerLinks(createParameters);
+                CreateContainerLinks(createParameters, targetNetwork);
+                
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -410,6 +420,15 @@ namespace DD.Research.GliderGun.Api
                 Log.LogInformation("Local state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentLocalStateDirectory.FullName);
                 Log.LogInformation("Host state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentHostStateDirectory.FullName);
 
+                var networks = await DockerClient.Networks.ListNetworksAsync();
+                var targetNetwork = networks.FirstOrDefault(
+                    network => network.Name == "glidergun_default"
+                );
+                if (targetNetwork == null)
+                    throw new InvalidOperationException("Cannot find target network.");
+
+                Log.LogInformation("Deployment container will be attached to network '{NetworkId}'.", targetNetwork.ID);
+
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
                     Name = "destroy-" + deploymentId,
@@ -442,7 +461,7 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
-                CreateContainerLinks(createParameters);
+                CreateContainerLinks(createParameters, targetNetwork);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
@@ -645,10 +664,13 @@ namespace DD.Research.GliderGun.Api
         /// <param name="createParameters">
         ///     The container-creation parameters.
         /// </param>
-        void CreateContainerLinks(CreateContainerParameters createParameters)
+        void CreateContainerLinks(CreateContainerParameters createParameters, NetworkListResponse targetNetwork)
         {
             if (createParameters == null)
                 throw new ArgumentNullException(nameof(createParameters));
+
+            if (targetNetwork == null)
+                throw new ArgumentNullException(nameof(targetNetwork));
 
             string[] containerLinks = _deployerOptions.Links
                 .Trim()
@@ -658,8 +680,18 @@ namespace DD.Research.GliderGun.Api
                 );
             if (containerLinks.Length == 0)
                 return;
-                
-            createParameters.HostConfig.Links = new List<string>(containerLinks);
+
+            createParameters.NetworkingConfig = new NetworkingConfig
+            {
+                EndpointsConfig = new Dictionary<string, EndpointSettings>
+                {
+                    [targetNetwork.Name] = new EndpointSettings
+                    {
+                        Links = new List<string>(containerLinks),
+                        NetworkID = targetNetwork.ID
+                    }
+                }
+            };
         }
 
         /// <summary>

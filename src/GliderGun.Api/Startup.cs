@@ -95,6 +95,9 @@ namespace DD.Research.GliderGun.Api
             logger.LogInformation("HostStateDirectory: '{HostStateDirectory}'.",
                 Configuration["HostStateDirectory"]
             );
+            logger.LogInformation("VaultEndPoint: '{VaultEndPoint}'",
+                Configuration["VaultEndPoint"]
+            );
              logger.LogInformation("DockerRegistrySettingsDirectory: '{DockerRegistrySettingsDirectory}'.",
                 Configuration["DockerRegistrySettingsDirectory"]
             );
