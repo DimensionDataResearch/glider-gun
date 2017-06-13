@@ -342,6 +342,15 @@ namespace DD.Research.GliderGun.Api
                     Image = fullyQualifiedTemplateImageTag,
                     AttachStdout = true,
                     AttachStderr = true,
+                    Env = new List<string>
+                    {
+                        // Disable coloured output because escape sequences look weird in the log.
+                        "ANSIBLE_NOCOLOR=1",
+
+                        $"VAULT_PATH={_deployerOptions.VaultPath}/{deploymentId}",
+                        $"VAULT_ADDR={_deployerOptions.VaultEndPoint}",
+                        $"VAULT_TOKEN={_deployerOptions.VaultToken}"
+                    },
                     HostConfig = new HostConfig
                     {
                         Binds = new List<string>
@@ -427,6 +436,15 @@ namespace DD.Research.GliderGun.Api
                     AttachStdout = true,
                     AttachStderr = true,
                     Tty = false,
+                    Env = new List<string>
+                    {
+                        // Disable coloured output because escape sequences look weird in the log.
+                        "ANSIBLE_NOCOLOR=1",
+
+                        $"VAULT_PATH={_deployerOptions.VaultPath}/{deploymentId}",
+                        $"VAULT_ADDR={_deployerOptions.VaultEndPoint}",
+                        $"VAULT_TOKEN={_deployerOptions.VaultToken}"
+                    },
                     HostConfig = new HostConfig
                     {
                         Binds = new List<string>
@@ -438,10 +456,6 @@ namespace DD.Research.GliderGun.Api
                             Type = "json-file",
                             Config = new Dictionary<string, string>()
                         }
-                    },
-                    Env = new List<string>
-                    {
-                        "ANSIBLE_NOCOLOR=1" // Disable coloured output because escape sequences look weird in the log.
                     },
                     Labels = new Dictionary<string, string>
                     {
@@ -623,11 +637,21 @@ namespace DD.Research.GliderGun.Api
             foreach (var sensitiveParameter in sensitiveTemplateParameters)
                 secretParameters[sensitiveParameter.Key] = sensitiveParameter.Value;
 
+            Log.LogInformation("Writing {TemplateParameterCount} parameters to Vault ('{VaultPath}')...",
+                secretParameters.Count,
+                vaultPath
+            );
+
             await VaultClient.WriteSecretAsync(vaultPath,
                 values: sensitiveTemplateParameters.ToDictionary(
                     item => item.Key,
                     item => (object)item.Value
                 )
+            );
+
+            Log.LogInformation("Wrote {TemplateParameterCount} parameters to Vault ('{VaultPath}').",
+                secretParameters.Count,
+                vaultPath
             );
         }
 
@@ -676,7 +700,10 @@ namespace DD.Research.GliderGun.Api
             if (targetNetwork == null)
                 throw new InvalidOperationException($"Cannot find target network '{_deployerOptions.ContainerNetworkName}'.");
 
-            Log.LogInformation("Deployment container will be attached to network '{NetworkName}' ('{NetworkId}').", targetNetwork.ID);
+            Log.LogInformation("Deployment container will be attached to network '{NetworkName}' ('{NetworkId}').",
+                targetNetwork.Name,
+                targetNetwork.ID
+            );
 
             string[] containerLinks = _deployerOptions.ContainerLinks
                 .Trim()
