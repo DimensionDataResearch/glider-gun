@@ -19,18 +19,18 @@ RUN mkdir -p /glidergun
 WORKDIR /glidergun
 
 # If building from source
-COPY NuGet.config /glidergun
-COPY src/GliderGun.Api /glidergun
-RUN ["dotnet", "restore"]
-RUN ["dotnet", "build"]
+# COPY NuGet.config /glidergun
+# COPY src/GliderGun.Api /glidergun
+# RUN ["dotnet", "restore"]
+# RUN ["dotnet", "build"]
 
 # If running output of "dotnet publish"
-#COPY src/GliderGun.Api/bin/Release/netcoreapp1.1/publish /glidergun
+COPY src/GliderGun.Api/bin/Release/netcoreapp1.1/publish /glidergun
 
 ENV GG_LocalStateDirectory=/var/lib/glider-gun/state
 
 # If building from source
-ENTRYPOINT ["dotnet", "run"]
+# ENTRYPOINT ["dotnet", "run"]
 
 # If running output of "dotnet publish"
-# ENTRYPOINT ["dotnet", "GliderGun.Api.dll"]
+ENTRYPOINT ["dotnet", "GliderGun.Api.dll"]

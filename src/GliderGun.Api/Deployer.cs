@@ -353,6 +353,15 @@ namespace DD.Research.GliderGun.Api
                     }
                 };
 
+                string[] containerLinks = _deployerOptions.Links
+                    .Trim()
+                    .Split(
+                        new char[] { ';' },
+                        StringSplitOptions.RemoveEmptyEntries
+                    );
+                if (containerLinks.Length > 0)
+                    createParameters.HostConfig.Links = new List<string>(containerLinks);
+
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
                 string containerId = newContainer.ID;
@@ -438,6 +447,15 @@ namespace DD.Research.GliderGun.Api
                         ["deployment.image.destroy.tag"] = destroyerImageTag
                     }
                 };
+
+                string[] containerLinks = _deployerOptions.Links
+                    .Trim()
+                    .Split(
+                        new char[] { ';' },
+                        StringSplitOptions.RemoveEmptyEntries
+                    );
+                if (containerLinks.Length > 0)
+                    createParameters.HostConfig.Links = new List<string>(containerLinks);
 
                 CreateContainerResponse newContainer = await DockerClient.Containers.CreateContainerAsync(createParameters);
 
