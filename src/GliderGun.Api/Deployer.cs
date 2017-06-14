@@ -35,6 +35,11 @@ namespace DD.Research.GliderGun.Api
         /// </summary>
         static readonly HttpClient IPConfigClient = new HttpClient();
 
+        /// <summary>
+        ///     The client IP address.
+        /// </summary>
+        static IPAddress ClientIP;
+
         private readonly DeployerOptions _deployerOptions;
         
         private readonly DockerRegistryOptions _dockerRegistryOptions;
@@ -1060,25 +1065,30 @@ namespace DD.Research.GliderGun.Api
         /// </returns>
         async Task<IPAddress> GetDeployerIPAddressAsync()
         {
-            string deployerIPAddress;
-            using (HttpResponseMessage response = await IPConfigClient.GetAsync("http://ifconfig.co/json"))
-            {
-                response.EnsureSuccessStatusCode();
-
-                JObject responseJson;
-                using (Stream responseStream = await response.Content.ReadAsStreamAsync())
-                using (StreamReader responseReader = new StreamReader(responseStream))
-                using (JsonTextReader jsonReader = new JsonTextReader(responseReader))
+            if (ClientIP == null)
+            {             
+                string deployerIPAddress;
+                using (HttpResponseMessage response = await IPConfigClient.GetAsync("http://ifconfig.co/json"))
                 {
-                    responseJson = new JsonSerializer().Deserialize<JObject>(jsonReader);
-                }
+                    response.EnsureSuccessStatusCode();
 
-                deployerIPAddress = responseJson.Value<string>("ip");
+                    JObject responseJson;
+                    using (Stream responseStream = await response.Content.ReadAsStreamAsync())
+                    using (StreamReader responseReader = new StreamReader(responseStream))
+                    using (JsonTextReader jsonReader = new JsonTextReader(responseReader))
+                    {
+                        responseJson = new JsonSerializer().Deserialize<JObject>(jsonReader);
+                    }
+
+                    deployerIPAddress = responseJson.Value<string>("ip");
+
+                    ClientIP = IPAddress.Parse(deployerIPAddress);
+                }
             }
 
-            Log.LogInformation("deployerIPAddress = '{DeployerIPAddress}", deployerIPAddress);
+            Log.LogInformation("deployerIPAddress = '{DeployerIPAddress}", ClientIP);
 
-            return IPAddress.Parse(deployerIPAddress);
+            return ClientIP;
         }
 
         AuthConfig GetDockerRegistryAuthenticationOption()
