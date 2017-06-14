@@ -26,7 +26,6 @@ package:
   stage: package
   script:
    - ls
-   - ifconfig
    - mkdir -p src/GliderGun.Api/bin/Release/netcoreapp1.1/publish
    - cp -rf dotnetapp/* src/GliderGun.Api/bin/Release/netcoreapp1.1/publish
    - export IMAGE_TAG=$(echo -en $CI_COMMIT_REF_NAME | tr -c '[:alnum:]_.-' '-')
