@@ -1,5 +1,5 @@
 {
     "DockerImageRegistryAddress": "artifactory.devops.itaas-cloud.com:7443",
-    "DockerImageRegistryUser": "gitlab",
-    "DockerImageRegistryPassword": "AKCp2WXXFwp3YWiHHgMod2ErJSHpRMy44e1SjCt1W52Z3wT57buYNdgcG4zbFVB4dc3qacEto"
+    "DockerImageRegistryUser": "",
+    "DockerImageRegistryPassword": ""
 }
