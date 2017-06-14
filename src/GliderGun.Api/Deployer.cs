@@ -1007,15 +1007,56 @@ namespace DD.Research.GliderGun.Api
                 LogContent = String.Empty
             };
 
-            var logParameters = new ContainerLogsParameters
+            try
             {
-                ShowStderr = true,
-                ShowStdout = true
-            };
-            using (Stream logStream = await DockerClient.Containers.GetContainerLogsAsync(containerId, logParameters, CancellationToken.None))
-            using (StreamReader logReader = new StreamReader(logStream))
+                byte[] rawLogData;
+
+                var logParameters = new ContainerLogsParameters
+                {
+                    ShowStderr = true,
+                    ShowStdout = true
+                };
+                using (Stream logStream = await DockerClient.Containers.GetContainerLogsAsync(containerId, logParameters, CancellationToken.None))
+                using (MemoryStream logBuffer = new MemoryStream())
+                {
+                    await logStream.CopyToAsync(logBuffer);
+                    logBuffer.Flush();
+
+                    rawLogData = logBuffer.ToArray();
+                }
+
+                StringBuilder logText = new StringBuilder();
+
+                int logPosition = 0;
+                (DockerLogEntry logEntry, int bytesRead) = DockerLogEntry.ReadFrom(rawLogData, logPosition);
+                while (logEntry != null)
+                {
+                    logText.Append(
+                        logEntry.GetText()
+                    );
+
+                    logPosition += bytesRead;
+                    (logEntry, bytesRead) = DockerLogEntry.ReadFrom(rawLogData, logPosition);
+                }
+                
+                containerLog.LogContent = logText.ToString();
+            }
+            catch (AggregateException eAggregate)
             {
-                containerLog.LogContent = await logReader.ReadToEndAsync();
+                containerLog.LogContent = $"Failed to get logs for container '{containerId}'.";
+
+                eAggregate.Flatten().Handle(exception =>
+                {
+                    Log.LogError("Failed to get logs for container {ContainerId}: {Exception}", exception);
+
+                    return true;
+                });
+            }
+            catch (Exception eGetContainerLog)
+            {
+                containerLog.LogContent = $"Failed to get logs for container '{containerId}'.";
+
+                Log.LogError("Failed to get logs for container {ContainerId}: {Exception}", containerId, eGetContainerLog);
             }
 
             return containerLog;
