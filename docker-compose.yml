@@ -10,7 +10,11 @@ services:
 
   glider-gun-api:
     image: dd/managecompute/glider-gun-api:master
-    environment:
+    logging:
+      driver: "json-file"
+    environment:    
+      GG_DockerImageRegistryPassword: ""
+      GG_DockerImageRegistryUser: ""
       GG_VaultEndPoint: "http://glider-gun-vault:8200/"
       GG_VaultToken: "51c51954-0755-41fa-bde6-b60e2c76501b"
       GG_ContainerNetworkName: "glidergun_default"
