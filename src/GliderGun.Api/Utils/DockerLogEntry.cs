@@ -37,10 +37,7 @@ namespace DD.Research.GliderGun.Api.Utils
 		/// <param name="data">
 		///     The log entry data.
 		/// </param>
-        /// <param name="correlationId">
-        ///     An optional message correlation Id.
-        /// </param>
-		public DockerLogEntry(DockerLogStreamType streamType, byte[] data, string correlationId = null)
+		public DockerLogEntry(DockerLogStreamType streamType, byte[] data)
 		{
 			if (data == null)
 				throw new ArgumentNullException(nameof(data));
