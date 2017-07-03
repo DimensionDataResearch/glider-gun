@@ -16,6 +16,7 @@ namespace DD.Research.GliderGun.Api.Models
         [Required]
         public string ImageName { get; set; }
 
+
         /// <summary>
         ///     Values for the template's parameters (if any).
         /// </summary>
@@ -38,5 +39,13 @@ namespace DD.Research.GliderGun.Api.Models
                 parameter => parameter.Value
             );
         }
+
+        /// <summary>
+        ///     Additional File mounts which could contain the template contents.
+        ///     Mount point path, content
+        /// </summary>
+        [Required]
+        [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Reuse)]
+        public Dictionary<string, string> Files { get; } = new Dictionary<string, string>();
     }
 }

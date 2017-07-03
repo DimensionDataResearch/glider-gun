@@ -92,7 +92,8 @@ namespace DD.Research.GliderGun.Api.Controllers
             string deploymentId = HttpContext.TraceIdentifier;
             DeploymentState deploymentState = await _deployer.DeployAsync(deploymentId, model.ImageName,
                 model.GetTemplateParameters(),
-                model.GetSensitiveTemplateParameters()
+                model.GetSensitiveTemplateParameters(),
+                model.Files
             );
 
             Deployment deployment = new Deployment

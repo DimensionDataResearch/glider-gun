@@ -295,10 +295,17 @@ namespace DD.Research.GliderGun.Api
         /// <param name="templateParameters">
         ///     A dictionary containing global template parameters to be written to the state directory.
         /// </param>
+        /// <param name="templateFiles">
+        ///     A dictionary containing mount files and its content.
+        /// </param>
         /// <returns>
         ///     The deployment state.
         /// </returns>
-        public async Task<DeploymentState> DeployAsync(string deploymentId, string templateImageTag, IDictionary<string, string> templateParameters, IDictionary<string, string> sensitiveTemplateParameters)
+        public async Task<DeploymentState> DeployAsync(string deploymentId, 
+                string templateImageTag, 
+                IDictionary<string, string> templateParameters, 
+                IDictionary<string, string> sensitiveTemplateParameters,
+                IDictionary<string, string> templateFiles)
         {
             if (String.IsNullOrWhiteSpace(templateImageTag))
                 throw new ArgumentException("Must supply a valid template image name.", nameof(templateImageTag));
@@ -329,17 +336,10 @@ namespace DD.Research.GliderGun.Api
                 Log.LogInformation("Local state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentLocalStateDirectory.FullName);
                 Log.LogInformation("Host state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentHostStateDirectory.FullName);
                 
+              
                 WriteTemplateParameters(templateParameters, deploymentLocalStateDirectory);
                 await CreateVaultSecrets(deploymentId, sensitiveTemplateParameters);
-
-                var networks = await DockerClient.Networks.ListNetworksAsync();
-                var targetNetwork = networks.FirstOrDefault(
-                    network => network.Name == "glidergun_default"
-                );
-                if (targetNetwork == null)
-                    throw new InvalidOperationException("Cannot find target network.");
-
-                Log.LogInformation("Deployment container will be attached to network '{NetworkId}'.", targetNetwork.ID);
+                var mountFiles = WriteTemplateFiles(templateFiles,deploymentHostStateDirectory);
 
                 CreateContainerParameters createParameters = new CreateContainerParameters
                 {
@@ -377,6 +377,17 @@ namespace DD.Research.GliderGun.Api
                         ["deployment.image.destroy.tag"] = GetDestroyerImageTag(fullyQualifiedTemplateImageTag)
                     }
                 };
+
+                foreach(var mountFile in mountFiles)
+                {
+                    // only allowed mount files are under root
+                    createParameters.HostConfig.Binds.Add($"{mountFile.Value}:/root/{mountFile.Key}");
+                }             
+
+                foreach(var bindings in createParameters.HostConfig.Binds)
+                {
+                   Log.LogInformation("Container Bindings '{Binding}'.", bindings);
+                }             
 
                 await AddContainerLinks(createParameters);
 
@@ -430,6 +441,7 @@ namespace DD.Research.GliderGun.Api
 
                 DirectoryInfo deploymentLocalStateDirectory = GetLocalStateDirectory(deploymentId);
                 DirectoryInfo deploymentHostStateDirectory = GetHostStateDirectory(deploymentId);
+                
 
                 Log.LogInformation("Local state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentLocalStateDirectory.FullName);
                 Log.LogInformation("Host state directory for deployment '{DeploymentId}' is '{LocalStateDirectory}'.", deploymentId, deploymentHostStateDirectory.FullName);
@@ -576,6 +588,14 @@ namespace DD.Research.GliderGun.Api
 
             return stateDirectory;
         }
+        DirectoryInfo GetHostMountFilesDirectory(DirectoryInfo stateDirectory)
+        {
+            DirectoryInfo overridesDirectory = stateDirectory.Subdirectory("overrides");
+            if (!overridesDirectory.Exists)
+                overridesDirectory.Create();
+
+            return overridesDirectory;
+        }
 
         /// <summary>
         ///     Write template parameters to tfvars.json in the specified state directory.
@@ -617,6 +637,53 @@ namespace DD.Research.GliderGun.Api
             );
         }
 
+
+        /// <summary>
+        ///     Write template files.
+        /// </summary>
+        /// <param name="files">
+        ///     A dictionary containing the template parameters to write.
+        /// </param>
+        /// <param name="stateDirectory">
+        ///     The state directory.
+        /// </param>
+        IDictionary<string, string> WriteTemplateFiles(IDictionary<string, string> files, DirectoryInfo stateDirectory)
+        {
+            if (files == null)
+                throw new ArgumentNullException(nameof(files));
+
+            if (stateDirectory == null)
+                throw new ArgumentNullException(nameof(stateDirectory));
+            
+            Dictionary<string, string> templateFiles = new Dictionary<string, string>();
+
+            var templateFilesDirectory = GetHostMountFilesDirectory(stateDirectory);
+            
+            foreach(var templateFile in files)
+            {                
+                var templateFileInfo = templateFilesDirectory.File(templateFile.Key);
+                if (templateFileInfo.Exists)
+                    templateFileInfo.Delete();
+               
+                if(!templateFileInfo.Directory.Exists)
+                    templateFileInfo.Directory.Create();                   
+            
+                using (StreamWriter writer = templateFileInfo.CreateText())
+                {
+                  writer.Write(templateFile.Value);
+                }   
+
+                templateFiles.Add(templateFile.Key, templateFileInfo.FullName);
+
+                Log.LogInformation("Wrote {TemplateFile} to '{TemplateFilePath}'.",
+                    templateFileInfo.Name,
+                    templateFileInfo.FullName
+                );             
+            }
+
+            return templateFiles;
+        }
+
         /// <summary>
         ///     Asynchronously create Vault secrets relating to the specified deployment.
         /// </summary>
@@ -636,6 +703,9 @@ namespace DD.Research.GliderGun.Api
 
             if (sensitiveTemplateParameters == null)
                 throw new ArgumentNullException(nameof(sensitiveTemplateParameters));
+
+            if (sensitiveTemplateParameters.Count == 0)
+                return;
 
             string vaultPath = Path.Combine(_deployerOptions.VaultPath, deploymentId);
             var secretParameters = new Dictionary<string, object>();
